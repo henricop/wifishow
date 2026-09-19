@@ -4,10 +4,11 @@ import CoreWLAN
 import CoreLocation
 import AppKit
 
-// MARK: - Permissao de localizacao
+// MARK: - Location permission
 //
-// Desde o macOS 14 o CoreWLAN devolve ssid/bssid == nil sem autorizacao de
-// localizacao. Sem esse gate o app abre e mostra uma lista vazia sem explicar.
+// Since macOS 14, CoreWLAN returns ssid/bssid == nil without location
+// authorization. Without this gate the app would just show an empty list
+// and never explain why.
 
 @Observable
 @MainActor
@@ -21,10 +22,10 @@ final class LocationGate: NSObject, CLLocationManagerDelegate {
 
     var message: String {
         switch status {
-        case .notDetermined: return "Aguardando autorizacao de localizacao..."
-        case .restricted:    return "Localizacao restrita por politica do sistema."
-        case .denied:        return "Localizacao negada. Sem ela o macOS oculta SSID e BSSID."
-        default:             return "Localizacao autorizada."
+        case .notDetermined: return "Waiting for location authorization..."
+        case .restricted:    return "Location is restricted by system policy."
+        case .denied:        return "Location denied. Without it macOS hides SSID and BSSID."
+        default:             return "Location authorized."
         }
     }
 
@@ -49,7 +50,7 @@ final class LocationGate: NSObject, CLLocationManagerDelegate {
     }
 }
 
-// MARK: - Amostra de historico
+// MARK: - History sample
 
 struct SignalSample: Identifiable {
     let id = UUID()
@@ -64,7 +65,7 @@ struct SignalSample: Identifiable {
 @MainActor
 final class WifiScanner {
 
-    // Resultado
+    // Results
     private(set) var networks: [WifiNetwork] = []
     private(set) var connected: WifiNetwork?
     private(set) var noiseFloor: Int = -92
@@ -74,11 +75,11 @@ final class WifiScanner {
     private(set) var errorText: String?
     private(set) var powerOn = true
 
-    // Historico do sinal da rede conectada
+    // Signal history for the connected network
     private(set) var history: [SignalSample] = []
-    private let historyLimit = 720   // ~12 min a 1 amostra/s
+    private let historyLimit = 720   // ~12 min at 1 sample/s
 
-    // Controle
+    // Control
     var interval: TimeInterval = 5
     private var scanTask: Task<Void, Never>?
     private var monitorTask: Task<Void, Never>?
@@ -86,7 +87,7 @@ final class WifiScanner {
     func start() {
         guard scanTask == nil else { return }
 
-        // Loop lento: varredura completa das redes vizinhas (bloqueante, ~2-4s).
+        // Slow loop: full scan of neighboring networks (blocking, ~2-4s).
         scanTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.scanOnce()
@@ -95,7 +96,7 @@ final class WifiScanner {
             }
         }
 
-        // Loop rapido: telemetria da interface conectada, 1x/s, sem custo de scan.
+        // Fast loop: connected-interface telemetry, 1/s, with no scan cost.
         monitorTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.sampleConnected()
@@ -115,7 +116,7 @@ final class WifiScanner {
 
     func clearHistory() { history.removeAll() }
 
-    // MARK: Telemetria rapida da interface conectada
+    // MARK: Fast telemetry of the connected interface
 
     private func sampleConnected() async {
         let snapshot = await Task.detached(priority: .utility) { () -> (String, Int, Int, Bool)? in
@@ -133,7 +134,7 @@ final class WifiScanner {
         if history.count > historyLimit { history.removeFirst(history.count - historyLimit) }
     }
 
-    // MARK: Varredura completa
+    // MARK: Full scan
 
     private func scanOnce() async {
         guard !isScanning else { return }
@@ -174,14 +175,14 @@ final class WifiScanner {
         case .success(let (list, _)):
             networks = list.sorted { $0.rssi > $1.rssi }
             connected = list.first(where: { $0.isConnected })
-            errorText = list.isEmpty ? "Nenhuma rede encontrada." : nil
+            errorText = list.isEmpty ? "No networks found." : nil
             lastScan = Date()
         case .failure(let err):
             errorText = (err as? ScanError)?.text ?? err.localizedDescription
         }
     }
 
-    // MARK: Derivados
+    // MARK: Derived
 
     func networks(in band: Band) -> [WifiNetwork] {
         networks.filter { $0.band == band }
@@ -191,7 +192,7 @@ final class WifiScanner {
         Dictionary(grouping: networks, by: \.band).mapValues(\.count)
     }
 
-    /// Ocupacao por canal: quantas redes e qual o sinal mais forte em cada canal.
+    /// Per-channel occupancy: how many networks and the strongest signal on each.
     func congestion(in band: Band) -> [(channel: Int, count: Int, bestRSSI: Int)] {
         Dictionary(grouping: networks(in: band), by: \.channel)
             .map { (ch, nets) in
@@ -200,10 +201,10 @@ final class WifiScanner {
             .sorted { $0.channel < $1.channel }
     }
 
-    /// Canais recomendados em 2.4 GHz: apenas 1, 6 e 11 nao se sobrepoem.
+    /// Recommended 2.4 GHz channels: only 1, 6 and 11 do not overlap.
     func recommended24() -> [(channel: Int, score: Int)] {
         [1, 6, 11].map { ch in
-            // Peso por proximidade: canais vizinhos ate +-4 interferem.
+            // Proximity weighting: channels within +-4 still interfere.
             let score = networks(in: .ghz24).reduce(0) { acc, n in
                 let dist = abs(n.channel - ch)
                 guard dist <= 4 else { return acc }
@@ -219,7 +220,7 @@ enum ScanError: Error {
     case noInterface
     var text: String {
         switch self {
-        case .noInterface: return "Nenhuma interface Wi-Fi encontrada neste Mac."
+        case .noInterface: return "No Wi-Fi interface found on this Mac."
         }
     }
 }

@@ -6,15 +6,15 @@ enum Screen: String, CaseIterable, Identifiable, Hashable {
 
     var title: String {
         switch self {
-        case .overview:   return "Visao geral"
+        case .overview:   return "Overview"
         case .ghz24:      return "2.4 GHz"
         case .ghz5:       return "5 GHz"
         case .ghz6:       return "6 GHz"
-        case .history:    return "Historico de sinal"
-        case .congestion: return "Congestao de canais"
-        case .speed:      return "Teste de velocidade"
-        case .details:    return "Detalhes do Wi-Fi"
-        case .all:        return "Todas as redes"
+        case .history:    return "Signal history"
+        case .congestion: return "Channel congestion"
+        case .speed:      return "Speed test"
+        case .details:    return "Wi-Fi details"
+        case .all:        return "All networks"
         }
     }
 
@@ -42,18 +42,18 @@ struct RootView: View {
     var body: some View {
         NavigationSplitView {
             List(selection: $screen) {
-                Section("Analisar") {
+                Section("Analyze") {
                     row(.overview)
                     row(.ghz24, badge: scanner.bandCounts()[.ghz24])
                     row(.ghz5,  badge: scanner.bandCounts()[.ghz5])
                     row(.ghz6,  badge: scanner.bandCounts()[.ghz6])
                 }
-                Section("Monitorar") {
+                Section("Monitor") {
                     row(.history)
                     row(.congestion)
                     row(.speed)
                 }
-                Section("Dados") {
+                Section("Data") {
                     row(.details)
                     row(.all, badge: scanner.networks.count)
                 }
@@ -103,7 +103,7 @@ struct RootView: View {
                     .frame(width: 7, height: 7)
                 if scanner.isScanning {
                     ProgressView().controlSize(.small)
-                    Text("varrendo...").font(.caption).foregroundStyle(.secondary)
+                    Text("scanning...").font(.caption).foregroundStyle(.secondary)
                 } else if let t = scanner.lastScan {
                     Text(t, style: .time).font(.caption).foregroundStyle(.secondary).monospacedDigit()
                 }
@@ -114,7 +114,7 @@ struct RootView: View {
             .frame(minWidth: 90, minHeight: 20)
         }
         ToolbarItem {
-            Picker("Intervalo", selection: Binding(
+            Picker("Interval", selection: Binding(
                 get: { scanner.interval },
                 set: { scanner.interval = $0 }
             )) {
@@ -131,7 +131,7 @@ struct RootView: View {
             }
             .disabled(scanner.isScanning)
             .keyboardShortcut("r")
-            .help("Varrer agora (Cmd+R)")
+            .help("Scan now (Cmd+R)")
         }
     }
 
@@ -139,16 +139,16 @@ struct RootView: View {
         VStack(spacing: 16) {
             Image(systemName: "location.slash.fill")
                 .font(.system(size: 44)).foregroundStyle(.orange)
-            Text("Localizacao necessaria").font(.title2.bold())
+            Text("Location permission required").font(.title2.bold())
             Text(gate.message)
                 .foregroundStyle(.secondary).multilineTextAlignment(.center)
-            Text("Desde o macOS 14, o sistema so revela SSID e BSSID das redes vizinhas para apps com permissao de localizacao. Nada e enviado para lugar nenhum — o app nao acessa a rede.")
+            Text("Since macOS 14, the system only reveals SSID and BSSID of nearby networks to apps with location permission. Nothing is sent anywhere — the app never touches the network.")
                 .font(.caption).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center).frame(maxWidth: 420)
             HStack {
-                Button("Pedir permissao") { gate.request() }
+                Button("Grant permission") { gate.request() }
                     .buttonStyle(.borderedProminent)
-                Button("Abrir Ajustes do sistema") { gate.openSettings() }
+                Button("Open System Settings") { gate.openSettings() }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

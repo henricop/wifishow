@@ -1,7 +1,7 @@
 import SwiftUI
 import Charts
 
-// MARK: - Teste de velocidade
+// MARK: - Speed test
 
 struct SpeedScreen: View {
     let runner: SpeedTestRunner
@@ -33,8 +33,8 @@ struct SpeedScreen: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Teste de velocidade").font(.title2.bold())
-            Text("Usa o networkquality, a ferramenta nativa do macOS. Mede banda e responsividade sob carga — o teste leva cerca de 35 segundos.")
+            Text("Speed test").font(.title2.bold())
+            Text("Uses networkquality, the tool built into macOS. Measures bandwidth and responsiveness under load — the test takes about 35 seconds.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -43,12 +43,12 @@ struct SpeedScreen: View {
         VStack(spacing: 14) {
             Image(systemName: "speedometer")
                 .font(.system(size: 42)).foregroundStyle(.tint)
-            Text("Pronto para medir sua conexão")
+            Text("Ready to measure your connection")
                 .font(.headline)
             Button {
                 runner.run()
             } label: {
-                Label("Iniciar teste", systemImage: "play.fill")
+                Label("Start test", systemImage: "play.fill")
                     .frame(width: 150)
             }
             .buttonStyle(.borderedProminent)
@@ -66,9 +66,9 @@ struct SpeedScreen: View {
                 .frame(maxWidth: 380)
             Text(phaseLabel)
                 .font(.headline)
-            Text("\(Int(runner.elapsed))s de ~\(Int(runner.expectedDuration))s")
+            Text("\(Int(runner.elapsed))s of ~\(Int(runner.expectedDuration))s")
                 .font(.caption).foregroundStyle(.secondary).monospacedDigit()
-            Button("Cancelar") { runner.cancel() }
+            Button("Cancel") { runner.cancel() }
                 .controlSize(.small)
         }
         .frame(maxWidth: .infinity)
@@ -78,9 +78,9 @@ struct SpeedScreen: View {
 
     private var phaseLabel: String {
         switch runner.elapsed {
-        case ..<3:   return "Conectando ao servidor..."
-        case 3..<20: return "Medindo capacidade..."
-        default:     return "Medindo responsividade sob carga..."
+        case ..<3:   return "Connecting to server..."
+        case 3..<20: return "Measuring capacity..."
+        default:     return "Measuring responsiveness under load..."
         }
     }
 
@@ -96,18 +96,18 @@ struct SpeedScreen: View {
             }
             HStack(spacing: 12) {
                 MetricCard(icon: "timer", color: .orange,
-                           title: "Latência (RTT)",
+                           title: "Latency (RTT)",
                            value: String(format: "%.0f", r.baseRttMs), unit: "ms",
                            caption: r.latencyLabel)
                 MetricCard(icon: "waveform.path.ecg", color: .purple,
-                           title: "Responsividade",
+                           title: "Responsiveness",
                            value: String(format: "%.0f", r.responsiveness), unit: "RPM",
                            caption: r.responsivenessLabel)
             }
 
             HStack {
                 Button { runner.run() } label: {
-                    Label("Testar de novo", systemImage: "arrow.clockwise")
+                    Label("Test again", systemImage: "arrow.clockwise")
                 }
                 .buttonStyle(.borderedProminent)
                 Spacer()
@@ -118,25 +118,25 @@ struct SpeedScreen: View {
 
     private func explanation(_ r: SpeedResult) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            InfoRow(title: "O que é responsividade (RPM)",
-                    text: "Roundtrips Per Minute mede quantas idas e voltas a rede consegue fazer por minuto **enquanto está saturada**. Quanto maior, melhor. É a métrica que explica por que uma conexão de 500 Mbps ainda trava numa chamada de vídeo.")
-            InfoRow(title: "Seu resultado", text: r.responsivenessHint)
-            InfoRow(title: "Latência (RTT)",
-                    text: "Tempo de ida e volta até o servidor com a rede ociosa. Abaixo de 50 ms é bom, acima de 100 ms atrapalha jogos e chamadas.")
+            InfoRow(title: "What responsiveness (RPM) means",
+                    text: "Roundtrips Per Minute measures how many round trips the network can complete per minute **while it is saturated**. Higher is better. It is the metric that explains why a 500 Mbps connection can still stutter on a video call.")
+            InfoRow(title: "Your result", text: r.responsivenessHint)
+            InfoRow(title: "Latency (RTT)",
+                    text: "Round-trip time to the server while the network is idle. Below 50 ms is good; above 100 ms hurts games and calls.")
 
             GroupBox {
                 VStack(alignment: .leading, spacing: 5) {
-                    LabeledContent("Servidor", value: r.testEndpoint)
+                    LabeledContent("Server", value: r.testEndpoint)
                     LabeledContent("Interface", value: r.interfaceName)
-                    LabeledContent("Duração", value: String(format: "%.0f s", r.durationSec))
-                    LabeledContent("Transferido",
+                    LabeledContent("Duration", value: String(format: "%.0f s", r.durationSec))
+                    LabeledContent("Transferred",
                                    value: "↓ \(bytes(r.dlBytes))  ↑ \(bytes(r.ulBytes))")
-                    LabeledContent("Sistema", value: r.osVersion)
+                    LabeledContent("System", value: r.osVersion)
                 }
                 .font(.caption).monospacedDigit()
                 .padding(4)
             } label: {
-                Label("Detalhes da medição", systemImage: "info.circle")
+                Label("Measurement details", systemImage: "info.circle")
             }
         }
     }
@@ -145,10 +145,10 @@ struct SpeedScreen: View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 34)).foregroundStyle(.orange)
-            Text("O teste não pôde ser concluído").font(.headline)
+            Text("The test could not be completed").font(.headline)
             Text(msg).font(.callout).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center).frame(maxWidth: 420)
-            Button("Tentar de novo") { runner.run() }
+            Button("Try again") { runner.run() }
                 .buttonStyle(.borderedProminent)
         }
         .frame(maxWidth: .infinity)
@@ -158,16 +158,16 @@ struct SpeedScreen: View {
 
     private var historySection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Testes desta sessão").font(.headline)
+            Text("Tests in this session").font(.headline)
             Chart(runner.history.reversed()) { r in
-                BarMark(x: .value("Hora", r.date, unit: .second),
+                BarMark(x: .value("Time", r.date, unit: .second),
                         y: .value("Mbps", r.downloadMbps))
                 .foregroundStyle(.blue)
-                .position(by: .value("Tipo", "Download"))
-                BarMark(x: .value("Hora", r.date, unit: .second),
+                .position(by: .value("Kind", "Download"))
+                BarMark(x: .value("Time", r.date, unit: .second),
                         y: .value("Mbps", r.uploadMbps))
                 .foregroundStyle(.green)
-                .position(by: .value("Tipo", "Upload"))
+                .position(by: .value("Kind", "Upload"))
             }
             .frame(height: 140)
 
@@ -232,7 +232,7 @@ struct InfoRow: View {
     }
 }
 
-// MARK: - Detalhes do Wi-Fi
+// MARK: - Wi-Fi details
 
 struct WifiDetailsScreen: View {
     @State private var details = InterfaceDetails.capture()
@@ -242,9 +242,9 @@ struct WifiDetailsScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(details.ssid == "-" ? "Sem conexão" : details.ssid)
+                    Text(details.ssid == "-" ? "Not connected" : details.ssid)
                         .font(.title2.bold())
-                    Text("Tudo que o macOS expõe sobre a rede conectada. Clique no ícone de cada linha para entender a métrica.")
+                    Text("Everything macOS exposes about the connected network. Click the icon on each row to understand the metric.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
 

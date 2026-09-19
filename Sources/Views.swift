@@ -2,7 +2,7 @@ import SwiftUI
 import Charts
 import CoreWLAN
 
-// MARK: - Cor estavel por rede (derivada do BSSID, nao do hashValue)
+// MARK: - Stable per-network color (derived from BSSID, not hashValue)
 
 extension WifiNetwork {
     var hue: Double {
@@ -23,7 +23,7 @@ extension WifiNetwork {
     }
 }
 
-// MARK: - Ponto da curva espectral
+// MARK: - Spectral curve point
 
 struct CurvePoint: Identifiable {
     let id: String
@@ -33,7 +33,7 @@ struct CurvePoint: Identifiable {
     let rssi: Double
 }
 
-// MARK: - Grafico do analyzer
+// MARK: - Analyzer chart
 
 struct AnalyzerChart: View {
     let networks: [WifiNetwork]
@@ -56,21 +56,21 @@ struct AnalyzerChart: View {
         Chart {
             ForEach(points) { p in
                 AreaMark(
-                    x: .value("Frequencia", p.mhz),
-                    yStart: .value("Piso", -100),
-                    yEnd: .value("Sinal", p.rssi),
-                    series: .value("Rede", p.netID)
+                    x: .value("Frequency", p.mhz),
+                    yStart: .value("Floor", -100),
+                    yEnd: .value("Signal", p.rssi),
+                    series: .value("Network", p.netID)
                 )
-                .foregroundStyle(by: .value("Rede", p.netID))
+                .foregroundStyle(by: .value("Network", p.netID))
                 .opacity(0.16)
                 .interpolationMethod(.catmullRom)
 
                 LineMark(
-                    x: .value("Frequencia", p.mhz),
-                    y: .value("Sinal", p.rssi),
-                    series: .value("Rede", p.netID)
+                    x: .value("Frequency", p.mhz),
+                    y: .value("Signal", p.rssi),
+                    series: .value("Network", p.netID)
                 )
-                .foregroundStyle(by: .value("Rede", p.netID))
+                .foregroundStyle(by: .value("Network", p.netID))
                 .lineStyle(StrokeStyle(lineWidth: 2))
                 .interpolationMethod(.catmullRom)
             }
@@ -103,7 +103,7 @@ struct AnalyzerChart: View {
             }
         }
         .overlay(alignment: .topLeading) {
-            // Rotulo de cada rede no pico da sua curva.
+            // Label for each network at the peak of its curve.
             GeometryReader { geo in
                 ForEach(networks) { n in
                     let xFrac = (n.centerMHz - band.range.lowerBound)
@@ -126,7 +126,7 @@ struct AnalyzerChart: View {
     }
 }
 
-// MARK: - Tabela de redes
+// MARK: - Network table
 
 struct NetworkTable: View {
     let networks: [WifiNetwork]
@@ -134,20 +134,20 @@ struct NetworkTable: View {
 
     var body: some View {
         Table(networks) {
-            TableColumn("Rede") { n in
+            TableColumn("Network") { n in
                 HStack(spacing: 6) {
                     Circle().fill(n.color).frame(width: 8, height: 8)
                     Text(n.displaySSID)
                         .fontWeight(n.isConnected ? .bold : .regular)
                     if n.isConnected {
-                        Text("conectada")
+                        Text("connected")
                             .font(.caption2)
                             .padding(.horizontal, 5).padding(.vertical, 1)
                             .background(Color.accentColor.opacity(0.2), in: Capsule())
                     }
                 }
             }
-            TableColumn("Sinal") { n in
+            TableColumn("Signal") { n in
                 HStack(spacing: 6) {
                     SignalBars(rssi: n.rssi)
                     Text("\(n.rssi) dBm").monospacedDigit().foregroundStyle(n.signalColor)
@@ -156,12 +156,12 @@ struct NetworkTable: View {
             TableColumn("SNR") { n in
                 Text("\(n.snr(noiseFloor: noiseFloor)) dB").monospacedDigit()
             }
-            TableColumn("Qualidade") { n in Text(n.qualityLabel) }
-            TableColumn("Canal") { n in Text("\(n.channel)").monospacedDigit() }
-            TableColumn("Largura") { n in Text(Describe.width(n.width)) }
-            TableColumn("Banda") { n in Text(n.band.label) }
-            TableColumn("Centro") { n in Text("\(Int(n.centerMHz)) MHz").monospacedDigit() }
-            TableColumn("Seguranca") { n in Text(n.security) }
+            TableColumn("Quality") { n in Text(n.qualityLabel) }
+            TableColumn("Channel") { n in Text("\(n.channel)").monospacedDigit() }
+            TableColumn("Width") { n in Text(Describe.width(n.width)) }
+            TableColumn("Band") { n in Text(n.band.label) }
+            TableColumn("Center") { n in Text("\(Int(n.centerMHz)) MHz").monospacedDigit() }
+            TableColumn("Security") { n in Text(n.security) }
             TableColumn("BSSID") { n in Text(n.bssid).font(.caption).monospaced() }
         }
     }
@@ -190,7 +190,7 @@ struct SignalBars: View {
     }
 }
 
-// MARK: - Tela de banda
+// MARK: - Band screen
 
 struct BandScreen: View {
     let band: Band
@@ -202,11 +202,11 @@ struct BandScreen: View {
         VStack(alignment: .leading, spacing: 0) {
             if nets.isEmpty {
                 ContentUnavailableView {
-                    Label("Nenhuma rede em \(band.label)", systemImage: "wifi.slash")
+                    Label("No networks on \(band.label)", systemImage: "wifi.slash")
                 } description: {
                     Text(band == .ghz6
-                         ? "Nenhuma rede 6 GHz por perto, ou este Mac nao suporta Wi-Fi 6E."
-                         : "Nenhuma rede detectada nesta banda.")
+                         ? "No 6 GHz networks nearby, or this Mac does not support Wi-Fi 6E."
+                         : "No networks detected on this band.")
                 }
             } else {
                 AnalyzerChart(networks: nets, band: band)
@@ -215,9 +215,9 @@ struct BandScreen: View {
                     .padding(.top, 12)
 
                 HStack {
-                    Text("Frequencia (canal)").font(.caption).foregroundStyle(.secondary)
+                    Text("Frequency (channel)").font(.caption).foregroundStyle(.secondary)
                     Spacer()
-                    Text("\(nets.count) redes").font(.caption).foregroundStyle(.secondary)
+                    Text("\(nets.count) networks").font(.caption).foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 6)
@@ -229,7 +229,7 @@ struct BandScreen: View {
     }
 }
 
-// MARK: - Historico de sinal
+// MARK: - Signal history
 
 struct HistoryScreen: View {
     let scanner: WifiScanner
@@ -239,18 +239,18 @@ struct HistoryScreen: View {
             if let c = scanner.connected ?? scanner.networks.first(where: \.isConnected) {
                 Text(c.displaySSID).font(.title2.bold())
             }
-            Text("Sinal e SNR da rede conectada, amostrados a cada segundo. Caminhe pela casa para mapear a cobertura.")
+            Text("Signal and SNR of the connected network, sampled every second. Walk around your place to map coverage.")
                 .font(.caption).foregroundStyle(.secondary)
 
             if scanner.history.isEmpty {
-                ContentUnavailableView("Coletando amostras...", systemImage: "waveform.path.ecg")
+                ContentUnavailableView("Collecting samples...", systemImage: "waveform.path.ecg")
             } else {
                 Chart(scanner.history) { s in
-                    LineMark(x: .value("Hora", s.time), y: .value("RSSI", s.rssi))
+                    LineMark(x: .value("Time", s.time), y: .value("RSSI", s.rssi))
                         .foregroundStyle(.blue)
                         .interpolationMethod(.monotone)
-                    AreaMark(x: .value("Hora", s.time),
-                             yStart: .value("Piso", -100),
+                    AreaMark(x: .value("Time", s.time),
+                             yStart: .value("Floor", -100),
                              yEnd: .value("RSSI", s.rssi))
                         .foregroundStyle(.blue.opacity(0.12))
                         .interpolationMethod(.monotone)
@@ -260,7 +260,7 @@ struct HistoryScreen: View {
 
                 Text("SNR (dB)").font(.caption).foregroundStyle(.secondary)
                 Chart(scanner.history) { s in
-                    LineMark(x: .value("Hora", s.time), y: .value("SNR", s.snr))
+                    LineMark(x: .value("Time", s.time), y: .value("SNR", s.snr))
                         .foregroundStyle(.green)
                         .interpolationMethod(.monotone)
                 }
@@ -269,17 +269,17 @@ struct HistoryScreen: View {
 
                 HStack(spacing: 20) {
                     if let last = scanner.history.last {
-                        Stat("Agora", "\(last.rssi) dBm")
+                        Stat("Now", "\(last.rssi) dBm")
                         Stat("SNR", "\(last.snr) dB")
                     }
                     let rssis = scanner.history.map(\.rssi)
                     if let mn = rssis.min(), let mx = rssis.max() {
                         Stat("Min", "\(mn) dBm")
                         Stat("Max", "\(mx) dBm")
-                        Stat("Media", "\(rssis.reduce(0, +) / rssis.count) dBm")
+                        Stat("Avg", "\(rssis.reduce(0, +) / rssis.count) dBm")
                     }
                     Spacer()
-                    Button("Limpar") { scanner.clearHistory() }
+                    Button("Clear") { scanner.clearHistory() }
                 }
                 .font(.caption)
             }
@@ -288,7 +288,7 @@ struct HistoryScreen: View {
     }
 }
 
-// MARK: - Congestao
+// MARK: - Congestion
 
 struct CongestionScreen: View {
     let scanner: WifiScanner
@@ -296,7 +296,7 @@ struct CongestionScreen: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Picker("Banda", selection: $band) {
+            Picker("Band", selection: $band) {
                 ForEach(Band.allCases) { b in Text(b.label).tag(b) }
             }
             .pickerStyle(.segmented)
@@ -304,15 +304,15 @@ struct CongestionScreen: View {
 
             let data = scanner.congestion(in: band)
             if data.isEmpty {
-                ContentUnavailableView("Sem redes em \(band.label)", systemImage: "chart.bar")
+                ContentUnavailableView("No networks on \(band.label)", systemImage: "chart.bar")
             } else {
-                Text("Redes por canal").font(.caption).foregroundStyle(.secondary)
+                Text("Networks per channel").font(.caption).foregroundStyle(.secondary)
                 Chart(data, id: \.channel) { row in
                     BarMark(
-                        x: .value("Canal", "\(row.channel)"),
-                        y: .value("Redes", row.count)
+                        x: .value("Channel", "\(row.channel)"),
+                        y: .value("Networks", row.count)
                     )
-                    .foregroundStyle(by: .value("Melhor sinal", row.bestRSSI))
+                    .foregroundStyle(by: .value("Best signal", row.bestRSSI))
                     .annotation(position: .top) {
                         Text("\(row.count)").font(.caption2).foregroundStyle(.secondary)
                     }
@@ -324,18 +324,18 @@ struct CongestionScreen: View {
 
             if band == .ghz24 {
                 Divider()
-                Text("Canais recomendados em 2.4 GHz")
+                Text("Recommended 2.4 GHz channels")
                     .font(.headline)
-                Text("Apenas 1, 6 e 11 nao se sobrepoem. Menor pontuacao = menos interferencia.")
+                Text("Only 1, 6 and 11 do not overlap. Lower score = less interference.")
                     .font(.caption).foregroundStyle(.secondary)
                 HStack(spacing: 12) {
                     ForEach(Array(scanner.recommended24().enumerated()), id: \.offset) { i, r in
                         VStack(spacing: 4) {
-                            Text("Canal \(r.channel)").font(.headline)
+                            Text("Channel \(r.channel)").font(.headline)
                             Text("\(r.score)").font(.title3.monospacedDigit())
                                 .foregroundStyle(i == 0 ? .green : .secondary)
                             if i == 0 {
-                                Text("melhor").font(.caption2).foregroundStyle(.green)
+                                Text("best").font(.caption2).foregroundStyle(.green)
                             }
                         }
                         .frame(width: 92)
@@ -351,7 +351,7 @@ struct CongestionScreen: View {
     }
 }
 
-// MARK: - Visao geral
+// MARK: - Overview
 
 struct OverviewScreen: View {
     let scanner: WifiScanner
@@ -372,25 +372,25 @@ struct OverviewScreen: View {
                             }
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .leading), count: 4),
                                       alignment: .leading, spacing: 12) {
-                                Stat("Sinal", "\(c.rssi) dBm")
-                                Stat("Ruido", "\(scanner.noiseFloor) dBm")
+                                Stat("Signal", "\(c.rssi) dBm")
+                                Stat("Noise", "\(scanner.noiseFloor) dBm")
                                 Stat("SNR", "\(c.snr(noiseFloor: scanner.noiseFloor)) dB")
-                                Stat("Canal", "\(c.channel)")
-                                Stat("Banda", c.band.label)
-                                Stat("Largura", Describe.width(c.width))
-                                Stat("Centro", "\(Int(c.centerMHz)) MHz")
-                                Stat("Seguranca", c.security)
+                                Stat("Channel", "\(c.channel)")
+                                Stat("Band", c.band.label)
+                                Stat("Width", Describe.width(c.width))
+                                Stat("Center", "\(Int(c.centerMHz)) MHz")
+                                Stat("Security", c.security)
                             }
                             Text("BSSID \(c.bssid)   ·   interface \(scanner.interfaceName)")
                                 .font(.caption).foregroundStyle(.secondary).monospaced()
                         }
                         .padding(6)
                     } label: {
-                        Label("Rede conectada", systemImage: "antenna.radiowaves.left.and.right")
+                        Label("Connected network", systemImage: "antenna.radiowaves.left.and.right")
                     }
                 } else {
                     GroupBox {
-                        Label(scanner.powerOn ? "Wi-Fi ligado, sem conexao" : "Wi-Fi desligado",
+                        Label(scanner.powerOn ? "Wi-Fi on, not connected" : "Wi-Fi is off",
                               systemImage: scanner.powerOn ? "wifi.exclamationmark" : "wifi.slash")
                         .padding(6)
                     }
@@ -416,7 +416,7 @@ struct OverviewScreen: View {
                     }
                     .padding(.vertical, 6)
                 } label: {
-                    Label("Redes por banda", systemImage: "chart.bar.doc.horizontal")
+                    Label("Networks per band", systemImage: "chart.bar.doc.horizontal")
                 }
 
                 if !scanner.history.isEmpty {
@@ -431,7 +431,7 @@ struct OverviewScreen: View {
                         .frame(height: 90)
                         .padding(.vertical, 4)
                     } label: {
-                        Label("Sinal nos ultimos 2 minutos", systemImage: "waveform.path.ecg")
+                        Label("Signal over the last 2 minutes", systemImage: "waveform.path.ecg")
                     }
                 }
             }

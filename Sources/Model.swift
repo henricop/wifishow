@@ -1,7 +1,7 @@
 import Foundation
 import CoreWLAN
 
-// MARK: - Banda
+// MARK: - Band
 
 enum Band: Int, CaseIterable, Identifiable, Sendable {
     case ghz24 = 1
@@ -18,7 +18,7 @@ enum Band: Int, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// Faixa de frequencia (MHz) usada como dominio do grafico.
+    /// Frequency range (MHz) used as the chart domain.
     var range: ClosedRange<Double> {
         switch self {
         case .ghz24: return 2400...2500
@@ -27,7 +27,7 @@ enum Band: Int, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// Canais que recebem marcacao no eixo X.
+    /// Channels that get a tick on the X axis.
     var tickChannels: [Int] {
         switch self {
         case .ghz24: return Array(1...14)
@@ -38,11 +38,11 @@ enum Band: Int, CaseIterable, Identifiable, Sendable {
     }
 }
 
-// MARK: - Plano de canais
+// MARK: - Channel plan
 
 enum ChannelPlan {
 
-    /// Frequencia central (MHz) de um canal primario de 20 MHz.
+    /// Center frequency (MHz) of a 20 MHz primary channel.
     static func centerFrequency(channel ch: Int, band: Band) -> Double {
         switch band {
         case .ghz24:
@@ -56,7 +56,7 @@ enum ChannelPlan {
         }
     }
 
-    /// Largura em MHz a partir do enum do CoreWLAN.
+    /// Width in MHz from the CoreWLAN enum.
     static func widthMHz(_ w: CWChannelWidth) -> Double {
         switch w {
         case .width20MHz:  return 20
@@ -67,9 +67,9 @@ enum ChannelPlan {
         }
     }
 
-    // Blocos canonicos de 5 GHz: o CoreWLAN entrega o canal PRIMARIO, mas a
-    // portadora ocupa o bloco inteiro centrado em outro ponto. Sem isso o
-    // grafico desenha a rede no lugar errado.
+    // Canonical 5 GHz blocks: CoreWLAN reports the PRIMARY channel, but the
+    // carrier occupies the whole block, centered somewhere else. Without this
+    // the chart draws the network in the wrong place.
     private static let blocks5GHz40: [[Int]] = [
         [36, 40], [44, 48], [52, 56], [60, 64],
         [100, 104], [108, 112], [116, 120], [124, 128],
@@ -92,7 +92,7 @@ enum ChannelPlan {
         return (lo + hi) / 2
     }
 
-    /// Frequencia central REAL da portadora, considerando a largura do canal.
+    /// REAL center frequency of the carrier, accounting for channel width.
     static func carrierCenter(channel ch: Int, band: Band, width w: CWChannelWidth) -> Double {
         let primary = centerFrequency(channel: ch, band: band)
         let mhz = widthMHz(w)
@@ -100,8 +100,8 @@ enum ChannelPlan {
 
         switch band {
         case .ghz24:
-            // Em 2.4 GHz a direcao do canal secundario (HT40+/-) so vem no
-            // Information Element, que o CoreWLAN nao expoe. Centra no primario.
+            // In 2.4 GHz the secondary channel direction (HT40+/-) only lives in
+            // the Information Element, which CoreWLAN does not expose. Use primary.
             return primary
 
         case .ghz5:
@@ -114,10 +114,10 @@ enum ChannelPlan {
             return blockCenter(blocks, ch) ?? primary
 
         case .ghz6:
-            // 6 GHz e regular: blocos alinhados a partir do canal 1.
-            let n = Int(mhz) / 20                      // 2, 4 ou 8 canais
-            let span = n * 4                           // canais 6 GHz andam de 4 em 4
-            let base = span * ((ch - 1) / span) + 1     // primeiro canal do bloco
+            // 6 GHz is regular: blocks aligned from channel 1.
+            let n = Int(mhz) / 20                      // 2, 4 or 8 channels
+            let span = n * 4                           // 6 GHz channels step by 4
+            let base = span * ((ch - 1) / span) + 1     // first channel of the block
             let lo = centerFrequency(channel: base, band: .ghz6)
             let hi = centerFrequency(channel: base + span - 4, band: .ghz6)
             return (lo + hi) / 2
@@ -125,7 +125,7 @@ enum ChannelPlan {
     }
 }
 
-// MARK: - Rede
+// MARK: - Network
 
 struct WifiNetwork: Identifiable, Hashable {
     let ssid: String
@@ -142,19 +142,19 @@ struct WifiNetwork: Identifiable, Hashable {
     var id: String { bssid.isEmpty ? "\(ssid)-\(channel)" : bssid }
 
     var isHidden: Bool { ssid.isEmpty }
-    var displaySSID: String { isHidden ? "(oculta)" : ssid }
+    var displaySSID: String { isHidden ? "(hidden)" : ssid }
 
     var widthMHz: Double { ChannelPlan.widthMHz(width) }
     var centerMHz: Double { ChannelPlan.carrierCenter(channel: channel, band: band, width: width) }
 
-    /// SNR em dB. O CoreWLAN so preenche `noise` da interface conectada, entao
-    /// para as vizinhas usamos o piso de ruido medido localmente.
+    /// SNR in dB. CoreWLAN only fills `noise` for the connected interface, so
+    /// for neighbors we fall back to the locally measured noise floor.
     func snr(noiseFloor: Int) -> Int {
         let floor = noise != 0 ? noise : noiseFloor
         return rssi - floor
     }
 
-    /// Qualidade 0...1 derivada do RSSI, para colorir a UI.
+    /// Quality 0...1 derived from RSSI, used to tint the UI.
     var quality: Double {
         let clamped = Double(min(max(rssi, -100), -30))
         return (clamped + 100) / 70
@@ -162,15 +162,15 @@ struct WifiNetwork: Identifiable, Hashable {
 
     var qualityLabel: String {
         switch rssi {
-        case (-55)...:      return "Excelente"
-        case (-67)..<(-55): return "Bom"
-        case (-75)..<(-67): return "Fraco"
-        default:            return "Ruim"
+        case (-55)...:      return "Excellent"
+        case (-67)..<(-55): return "Good"
+        case (-75)..<(-67): return "Fair"
+        default:            return "Poor"
         }
     }
 
-    /// Pontos da curva espectral desenhada no analyzer.
-    /// Parabola com pico no RSSI e base na largura ocupada do canal.
+    /// Points of the spectral curve drawn in the analyzer.
+    /// Parabola peaking at RSSI with its base spanning the occupied width.
     func curve(floor: Double = -100, samples: Int = 33) -> [(mhz: Double, rssi: Double)] {
         let half = widthMHz / 2
         let peak = Double(rssi)
@@ -186,28 +186,28 @@ struct WifiNetwork: Identifiable, Hashable {
     }
 }
 
-// MARK: - Helpers de formatacao
+// MARK: - Formatting helpers
 
 enum Describe {
     static func security(_ n: CWNetwork) -> String {
         let map: [(CWSecurity, String)] = [
-            (.none, "Aberta"), (.WEP, "WEP"),
+            (.none, "Open"), (.WEP, "WEP"),
             (.wpaPersonal, "WPA"), (.wpaPersonalMixed, "WPA/WPA2"),
             (.wpa2Personal, "WPA2"), (.wpa3Personal, "WPA3"),
             (.wpa3Transition, "WPA2/WPA3"), (.wpa3Enterprise, "WPA3 Enterprise"),
             (.wpaEnterprise, "WPA Enterprise"), (.wpaEnterpriseMixed, "WPA/WPA2 Enterprise"),
             (.wpa2Enterprise, "WPA2 Enterprise"), (.enterprise, "Enterprise"),
-            (.personal, "Personal"), (.dynamicWEP, "WEP dinamico"),
+            (.personal, "Personal"), (.dynamicWEP, "Dynamic WEP"),
         ]
         for (s, label) in map where n.supportsSecurity(s) { return label }
-        return "Desconhecida"
+        return "Unknown"
     }
 
-    /// Seguranca da interface conectada (CWInterface.security()), que usa o
-    /// mesmo enum das redes escaneadas mas e consultado diretamente.
+    /// Security of the connected interface (CWInterface.security()), which uses
+    /// the same enum as scanned networks but is queried directly.
     static func interfaceSecurity(_ s: CWSecurity) -> String {
         switch s {
-        case .none:               return "Aberta"
+        case .none:               return "Open"
         case .WEP:                return "WEP"
         case .wpaPersonal:        return "WPA Personal"
         case .wpaPersonalMixed:   return "WPA/WPA2 Personal"
@@ -220,11 +220,11 @@ enum Describe {
         case .wpa2Enterprise:     return "WPA2 Enterprise"
         case .personal:           return "Personal"
         case .enterprise:         return "Enterprise"
-        case .dynamicWEP:         return "WEP dinamico"
+        case .dynamicWEP:         return "Dynamic WEP"
         case .OWE:                return "OWE"
         case .oweTransition:      return "OWE Transition"
-        case .unknown:            return "Desconhecida"
-        @unknown default:         return "Desconhecida"
+        case .unknown:            return "Unknown"
+        @unknown default:         return "Unknown"
         }
     }
 

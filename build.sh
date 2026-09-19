@@ -1,5 +1,5 @@
 #!/bin/bash
-# Compila o WifiShow e monta o bundle .app universal, assinado ad-hoc.
+# Builds WifiShow and assembles a universal .app bundle, ad-hoc signed.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -14,7 +14,7 @@ FRAMEWORKS=(-framework SwiftUI -framework AppKit -framework Charts
             -framework CoreWLAN -framework CoreLocation)
 
 command -v swiftc >/dev/null || {
-  echo "erro: swiftc nao encontrado. Instale as Command Line Tools:"
+  echo "error: swiftc not found. Install the Command Line Tools:"
   echo "      xcode-select --install"
   exit 1
 }
@@ -22,15 +22,15 @@ command -v swiftc >/dev/null || {
 rm -rf "$APP" .build
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" .build
 
-echo "› compilando arm64..."
+echo "› building arm64..."
 swiftc -O -swift-version 5 -target arm64-apple-macos$MIN_MACOS \
   "${SRC[@]}" -o .build/WifiShow-arm64 "${FRAMEWORKS[@]}"
 
-echo "› compilando x86_64..."
+echo "› building x86_64..."
 swiftc -O -swift-version 5 -target x86_64-apple-macos$MIN_MACOS \
   "${SRC[@]}" -o .build/WifiShow-x86_64 "${FRAMEWORKS[@]}"
 
-echo "› unindo em binario universal..."
+echo "› merging into universal binary..."
 lipo -create .build/WifiShow-arm64 .build/WifiShow-x86_64 \
      -output "$APP/Contents/MacOS/WifiShow"
 
@@ -40,6 +40,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
+  <key>CFBundleDevelopmentRegion</key><string>en</string>
+  <key>CFBundleLocalizations</key><array><string>en</string></array>
   <key>CFBundleName</key><string>WifiShow</string>
   <key>CFBundleDisplayName</key><string>WifiShow</string>
   <key>CFBundleIdentifier</key><string>$ID</string>
@@ -52,12 +54,12 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSHumanReadableCopyright</key><string>MIT License</string>
-  <key>NSLocationWhenInUseUsageDescription</key><string>O macOS exige permissao de localizacao para revelar o nome (SSID) e o endereco (BSSID) das redes Wi-Fi proximas. Nenhum dado sai do seu Mac.</string>
-  <key>NSLocationUsageDescription</key><string>O macOS exige permissao de localizacao para revelar o nome (SSID) e o endereco (BSSID) das redes Wi-Fi proximas. Nenhum dado sai do seu Mac.</string>
+  <key>NSLocationWhenInUseUsageDescription</key><string>macOS requires location permission to reveal the name (SSID) and address (BSSID) of nearby Wi-Fi networks. No data ever leaves your Mac.</string>
+  <key>NSLocationUsageDescription</key><string>macOS requires location permission to reveal the name (SSID) and address (BSSID) of nearby Wi-Fi networks. No data ever leaves your Mac.</string>
 </dict></plist>
 PLIST
 
-echo "› assinando (ad-hoc)..."
+echo "› signing (ad-hoc)..."
 codesign --force --sign - --identifier "$ID" "$APP"
 
 rm -rf .build

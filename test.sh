@@ -1,5 +1,5 @@
 #!/bin/bash
-# Suite de testes do WifiShow. Nao precisa de rede nem de permissoes.
+# WifiShow test suite. Requires no network and no permissions.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -7,7 +7,7 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 fail=0
 
-echo "▸ Plano de canais (canal primario -> centro da portadora)"
+echo "▸ Channel plan (primary channel -> carrier center)"
 mkdir -p "$tmp/plan"
 cp Tests/ChannelPlanTests.swift "$tmp/plan/main.swift"
 swiftc -swift-version 5 Sources/Model.swift "$tmp/plan/main.swift" \
@@ -15,7 +15,7 @@ swiftc -swift-version 5 Sources/Model.swift "$tmp/plan/main.swift" \
 "$tmp/plan/run" || fail=1
 
 echo
-echo "▸ Parsing do networkquality"
+echo "▸ networkquality parsing"
 mkdir -p "$tmp/speed"
 cp Tests/SpeedTestParsing.swift "$tmp/speed/main.swift"
 swiftc -swift-version 5 Sources/SpeedTest.swift "$tmp/speed/main.swift" \
@@ -23,4 +23,4 @@ swiftc -swift-version 5 Sources/SpeedTest.swift "$tmp/speed/main.swift" \
 "$tmp/speed/run" Tests/fixtures-networkquality.json || fail=1
 
 echo
-[ $fail -eq 0 ] && echo "✓ suite completa passou" || { echo "✗ houve falhas"; exit 1; }
+[ $fail -eq 0 ] && echo "✓ full suite passed" || { echo "✗ failures detected"; exit 1; }

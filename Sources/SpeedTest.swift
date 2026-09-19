@@ -1,13 +1,13 @@
 import Foundation
 import Observation
 
-// MARK: - Teste de velocidade
+// MARK: - Speed test
 //
-// Usa o /usr/bin/networkquality, a ferramenta nativa do macOS. Alem de banda,
-// ela mede *responsividade* (RPM) sob carga — que e o que realmente explica
-// chamada de video travando numa conexao "rapida".
+// Uses /usr/bin/networkquality, the tool built into macOS. Beyond bandwidth it
+// measures *responsiveness* (RPM) under load — which is what actually explains
+// a video call stuttering on a "fast" connection.
 //
-// Sem servidor proprio: o binario da Apple fala com o edge mais proximo.
+// No server of our own: Apple's binary talks to the nearest edge.
 
 struct SpeedResult: Identifiable, Codable {
     let id: UUID
@@ -26,36 +26,36 @@ struct SpeedResult: Identifiable, Codable {
     var downloadMbps: Double { downloadBps / 1_000_000 }
     var uploadMbps: Double   { uploadBps / 1_000_000 }
 
-    /// Classificacao de responsividade segundo a escala da Apple.
+    /// Responsiveness rating following Apple's scale.
     var responsivenessLabel: String {
         switch responsiveness {
-        case ..<200:      return "Baixa"
-        case 200..<1000:  return "Média"
-        default:          return "Alta"
+        case ..<200:      return "Low"
+        case 200..<1000:  return "Medium"
+        default:          return "High"
         }
     }
 
     var responsivenessHint: String {
         switch responsiveness {
         case ..<200:
-            return "Sob carga a conexão engasga — sintoma clássico de bufferbloat. Chamadas de vídeo e jogos sofrem mesmo com banda sobrando."
+            return "The connection stalls under load — the classic symptom of bufferbloat. Video calls and games suffer even with bandwidth to spare."
         case 200..<1000:
-            return "Comportamento aceitável sob carga. Chamadas de vídeo funcionam bem na maior parte do tempo."
+            return "Acceptable behavior under load. Video calls work well most of the time."
         default:
-            return "Excelente. A conexão continua responsiva mesmo saturada."
+            return "Excellent. The connection stays responsive even when saturated."
         }
     }
 
     var latencyLabel: String {
         switch baseRttMs {
-        case ..<50:   return "Boa"
-        case 50..<100: return "Aceitável"
-        default:      return "Ruim"
+        case ..<50:    return "Good"
+        case 50..<100: return "Acceptable"
+        default:       return "Poor"
         }
     }
 }
 
-// MARK: - Schema real do `networkquality -c`
+// MARK: - Real schema of `networkquality -c`
 
 struct NQOutput: Decodable {
     let base_rtt: Double?
@@ -73,8 +73,8 @@ struct NQOutput: Decodable {
 }
 
 extension SpeedResult {
-    /// Converte a saida bruta do `networkquality -c` em um resultado.
-    /// Separado da execucao do processo para poder ser testado offline.
+    /// Converts the raw output of `networkquality -c` into a result.
+    /// Kept separate from process execution so it can be tested offline.
     static func parse(_ data: Data) throws -> SpeedResult {
         let nq = try JSONDecoder().decode(NQOutput.self, from: data)
         guard let dl = nq.dl_throughput, let ul = nq.ul_throughput else {
@@ -118,15 +118,15 @@ enum SpeedTestError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unavailable:
-            return "A ferramenta networkquality não está disponível neste macOS."
+            return "The networkquality tool is not available on this macOS."
         case .failed(let code, let msg):
-            return msg.isEmpty ? "O teste falhou (código \(code))." : "O teste falhou: \(msg)"
+            return msg.isEmpty ? "The test failed (exit code \(code))." : "The test failed: \(msg)"
         case .badOutput:
-            return "O teste devolveu uma resposta inesperada."
+            return "The test returned an unexpected response."
         case .decoding(let d):
-            return "Não foi possível ler o resultado: \(d)"
+            return "Could not read the result: \(d)"
         case .offline:
-            return "Sem conexão com a internet."
+            return "No internet connection."
         }
     }
 }
@@ -154,7 +154,7 @@ final class SpeedTestRunner {
         return false
     }
 
-    /// O teste da Apple leva cerca de 35s; usado so para a barra de progresso.
+    /// Apple's test takes about 35s; used only to drive the progress bar.
     let expectedDuration: TimeInterval = 36
 
     var progress: Double {
@@ -201,7 +201,7 @@ final class SpeedTestRunner {
         elapsed = 0
     }
 
-    // MARK: Execucao do processo
+    // MARK: Process execution
 
     private nonisolated static func execute() async -> Result<SpeedResult, SpeedTestError> {
         await Task.detached(priority: .userInitiated) { () -> Result<SpeedResult, SpeedTestError> in
@@ -212,7 +212,7 @@ final class SpeedTestRunner {
 
             let proc = Process()
             proc.executableURL = URL(fileURLWithPath: tool)
-            proc.arguments = ["-c"]                      // saida em JSON
+            proc.arguments = ["-c"]                      // JSON output
 
             let out = Pipe(), err = Pipe()
             proc.standardOutput = out
@@ -222,7 +222,7 @@ final class SpeedTestRunner {
                 return .failure(.failed(code: -1, message: error.localizedDescription))
             }
 
-            // Ler antes de esperar: o pipe tem buffer limitado e a saida e grande.
+            // Read before waiting: the pipe buffer is limited and output is large.
             let outData = out.fileHandleForReading.readDataToEndOfFile()
             let errData = err.fileHandleForReading.readDataToEndOfFile()
             proc.waitUntilExit()

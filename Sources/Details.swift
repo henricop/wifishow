@@ -2,31 +2,31 @@ import Foundation
 import CoreWLAN
 import Darwin
 
-// MARK: - Retrato completo da interface conectada
+// MARK: - Full portrait of the connected interface
 //
-// O scan devolve pouca coisa das redes vizinhas, mas da interface conectada o
-// CoreWLAN expoe bem mais: taxa de transmissao, potencia, codigo do pais,
-// modo PHY, MAC do adaptador. Esta tela reune tudo em um lugar so.
+// A scan returns little about neighboring networks, but CoreWLAN exposes much
+// more about the connected one: transmit rate, power, country code, PHY mode,
+// adapter MAC. This screen gathers all of it in one place.
 
 struct InterfaceDetails {
-    var interfaceName  = "-"
+    var interfaceName   = "-"
     var hardwareAddress = "-"
-    var ssid           = "-"
-    var bssid          = "-"
-    var rssi           = 0
-    var noise          = 0
-    var transmitRate   = 0.0
-    var transmitPower  = 0
-    var countryCode    = "-"
-    var security       = "-"
-    var phyMode        = "-"
-    var channel        = 0
-    var band: Band?    = nil
+    var ssid            = "-"
+    var bssid           = "-"
+    var rssi            = 0
+    var noise           = 0
+    var transmitRate    = 0.0
+    var transmitPower   = 0
+    var countryCode     = "-"
+    var security        = "-"
+    var phyMode         = "-"
+    var channel         = 0
+    var band: Band?     = nil
     var width: CWChannelWidth = .widthUnknown
-    var powerOn        = false
-    var serviceActive  = false
-    var ipv4           = "-"
-    var ipv6           = "-"
+    var powerOn         = false
+    var serviceActive   = false
+    var ipv4            = "-"
+    var ipv6            = "-"
 
     var snr: Int { noise != 0 ? rssi - noise : 0 }
 
@@ -71,7 +71,7 @@ struct InterfaceDetails {
         return d
     }
 
-    /// Enderecos IP locais da interface, via getifaddrs.
+    /// Local IP addresses of the interface, via getifaddrs.
     private static func addresses(for iface: String) -> (v4: String?, v6: String?) {
         var v4: String?, v6: String?
         var head: UnsafeMutablePointer<ifaddrs>?
@@ -95,7 +95,7 @@ struct InterfaceDetails {
 
             if family == UInt8(AF_INET) {
                 v4 = addr
-            } else if v6 == nil, !addr.hasPrefix("fe80") {   // ignora link-local
+            } else if v6 == nil, !addr.hasPrefix("fe80") {   // skip link-local
                 v6 = addr
             }
         }
@@ -103,10 +103,11 @@ struct InterfaceDetails {
     }
 }
 
-// MARK: - Item explicado
+// MARK: - Explained item
 //
-// Cada metrica vem com uma explicacao do que significa. O objetivo e que
-// alguem sem formacao em redes consiga ler a tela sem procurar fora.
+// Every metric ships with an explanation of what it means. The goal is that
+// someone without a networking background can read the whole screen without
+// looking anything up elsewhere.
 
 struct DetailItem: Identifiable {
     let id = UUID()
@@ -126,60 +127,60 @@ enum DetailsBuilder {
 
     static func categories(_ d: InterfaceDetails) -> [DetailCategory] {
         [
-            DetailCategory(title: "Identificação", icon: "tag", items: [
-                DetailItem(key: "Nome da rede (SSID)", value: d.ssid,
-                           explanation: "Service Set Identifier — o nome que o roteador anuncia. Várias redes podem ter o mesmo nome; o que as distingue é o BSSID."),
+            DetailCategory(title: "Identity", icon: "tag", items: [
+                DetailItem(key: "Network name (SSID)", value: d.ssid,
+                           explanation: "Service Set Identifier — the name the router advertises. Several networks can share the same name; what tells them apart is the BSSID."),
                 DetailItem(key: "BSSID", value: d.bssid,
-                           explanation: "Basic Service Set Identifier — o endereço MAC do ponto de acesso ao qual você está conectado. Em redes mesh, muda quando você troca de nó."),
+                           explanation: "Basic Service Set Identifier — the MAC address of the access point you are connected to. On mesh networks it changes when you roam between nodes."),
                 DetailItem(key: "Interface", value: d.interfaceName,
-                           explanation: "Nome do adaptador Wi-Fi no sistema. Em Macs é quase sempre en0 ou en1."),
-                DetailItem(key: "MAC do adaptador", value: d.hardwareAddress,
-                           explanation: "Endereço físico da placa Wi-Fi deste Mac. O macOS pode randomizar o endereço apresentado a cada rede, por privacidade."),
-                DetailItem(key: "Endereço IPv4", value: d.ipv4,
-                           explanation: "Endereço que identifica este Mac na rede local. Normalmente atribuído por DHCP pelo roteador."),
-                DetailItem(key: "Endereço IPv6", value: d.ipv6,
-                           explanation: "Endereço IPv6 global, quando o provedor oferece. Endereços link-local (fe80::) são omitidos."),
+                           explanation: "Name of the Wi-Fi adapter as the system sees it. On Macs this is almost always en0 or en1."),
+                DetailItem(key: "Adapter MAC", value: d.hardwareAddress,
+                           explanation: "Physical address of this Mac's Wi-Fi card. macOS may present a randomized address to each network for privacy."),
+                DetailItem(key: "IPv4 address", value: d.ipv4,
+                           explanation: "Address identifying this Mac on the local network. Usually assigned by the router over DHCP."),
+                DetailItem(key: "IPv6 address", value: d.ipv6,
+                           explanation: "Global IPv6 address, when your provider offers one. Link-local addresses (fe80::) are omitted."),
             ]),
 
-            DetailCategory(title: "Sinal", icon: "antenna.radiowaves.left.and.right", items: [
+            DetailCategory(title: "Signal", icon: "antenna.radiowaves.left.and.right", items: [
                 DetailItem(key: "RSSI", value: "\(d.rssi) dBm",
-                           explanation: "Received Signal Strength Indicator — a força do sinal que chega. É negativo: quanto mais perto de zero, melhor. Acima de -55 é excelente; abaixo de -75 começa a doer."),
-                DetailItem(key: "Ruído", value: d.noise != 0 ? "\(d.noise) dBm" : "-",
-                           explanation: "Energia de fundo na mesma faixa, vinda de outras redes, micro-ondas, Bluetooth. Quanto mais negativo, mais limpo o ambiente."),
+                           explanation: "Received Signal Strength Indicator — how strong the incoming signal is. It is negative: the closer to zero, the better. Above -55 is excellent; below -75 it starts to hurt."),
+                DetailItem(key: "Noise", value: d.noise != 0 ? "\(d.noise) dBm" : "-",
+                           explanation: "Background energy on the same band, coming from other networks, microwaves, Bluetooth. The more negative, the cleaner the environment."),
                 DetailItem(key: "SNR", value: d.snr != 0 ? "\(d.snr) dB" : "-",
-                           explanation: "Signal-to-Noise Ratio — a distância entre sinal e ruído, e o número que mais importa. Acima de 40 dB é ótimo; abaixo de 20 dB a velocidade cai muito."),
-                DetailItem(key: "Qualidade", value: qualityLabel(d.rssi),
-                           explanation: "Leitura direta do RSSI em linguagem comum."),
-                DetailItem(key: "Taxa de transmissão", value: d.transmitRate > 0 ? "\(Int(d.transmitRate)) Mbps" : "-",
-                           explanation: "Velocidade negociada no rádio agora — não é a velocidade da sua internet. É o teto do enlace entre este Mac e o roteador."),
-                DetailItem(key: "Potência de transmissão", value: d.transmitPower > 0 ? "\(d.transmitPower)" : "-",
-                           explanation: "Valor bruto de potência reportado pelo driver. A Apple documenta como mW, mas em Macs modernos o número costuma não corresponder a miliwatts reais — o limite legal é de cerca de 100 mW. Sirva-se dele para comparar variações, não como medida absoluta."),
+                           explanation: "Signal-to-Noise Ratio — the gap between signal and noise, and the number that matters most. Above 40 dB is great; below 20 dB throughput drops sharply."),
+                DetailItem(key: "Quality", value: qualityLabel(d.rssi),
+                           explanation: "Plain-language reading of the RSSI value."),
+                DetailItem(key: "Transmit rate", value: d.transmitRate > 0 ? "\(Int(d.transmitRate)) Mbps" : "-",
+                           explanation: "Rate currently negotiated on the radio — this is not your internet speed. It is the ceiling of the link between this Mac and the router."),
+                DetailItem(key: "Transmit power", value: d.transmitPower > 0 ? "\(d.transmitPower)" : "-",
+                           explanation: "Raw power value reported by the driver. Apple documents it as mW, but on modern Macs the number does not match real milliwatts — the legal limit is around 100 mW. Use it to compare relative changes, not as an absolute measurement."),
             ]),
 
-            DetailCategory(title: "Canal e frequência", icon: "waveform", items: [
-                DetailItem(key: "Canal", value: d.channel > 0 ? "\(d.channel)" : "-",
-                           explanation: "Canal primário anunciado pelo roteador. Em canais largos, a portadora ocupa um bloco maior, centrado em outro ponto."),
-                DetailItem(key: "Banda", value: d.band?.label ?? "-",
-                           explanation: "2.4 GHz alcança mais longe e atravessa paredes, mas é lotada. 5 GHz é mais rápida e limpa, com menos alcance. 6 GHz é a mais limpa e a mais curta."),
-                DetailItem(key: "Largura do canal", value: Describe.width(d.width),
-                           explanation: "Quanto espectro a rede ocupa. Mais largura dá mais velocidade, mas aumenta a chance de colidir com vizinhos."),
-                DetailItem(key: "Frequência central", value: d.centerMHz.map { "\(Int($0)) MHz" } ?? "-",
-                           explanation: "Centro real da portadora, já considerando a largura — não é a frequência do canal primário quando o canal é largo."),
-                DetailItem(key: "Faixa ocupada", value: d.occupiedRange,
-                           explanation: "Intervalo de frequências que esta rede realmente ocupa. Redes cujas faixas se cruzam interferem entre si."),
+            DetailCategory(title: "Channel and frequency", icon: "waveform", items: [
+                DetailItem(key: "Channel", value: d.channel > 0 ? "\(d.channel)" : "-",
+                           explanation: "Primary channel advertised by the router. On wide channels the carrier occupies a larger block, centered somewhere else."),
+                DetailItem(key: "Band", value: d.band?.label ?? "-",
+                           explanation: "2.4 GHz reaches farther and passes through walls, but it is crowded. 5 GHz is faster and cleaner with shorter range. 6 GHz is the cleanest and the shortest."),
+                DetailItem(key: "Channel width", value: Describe.width(d.width),
+                           explanation: "How much spectrum the network occupies. More width means more speed, but a higher chance of colliding with neighbors."),
+                DetailItem(key: "Center frequency", value: d.centerMHz.map { "\(Int($0)) MHz" } ?? "-",
+                           explanation: "Real center of the carrier, already accounting for width — it is not the primary channel's frequency when the channel is wide."),
+                DetailItem(key: "Occupied range", value: d.occupiedRange,
+                           explanation: "Frequency span this network actually occupies. Networks whose spans overlap interfere with each other."),
             ]),
 
-            DetailCategory(title: "Configuração", icon: "gearshape", items: [
-                DetailItem(key: "Segurança", value: d.security,
-                           explanation: "Protocolo de criptografia. WPA3 é o atual; WPA2 ainda é seguro; WEP e redes abertas não protegem nada."),
-                DetailItem(key: "Modo PHY", value: d.phyMode,
-                           explanation: "Geração do padrão 802.11 em uso. Wi-Fi 6 (ax) e superiores lidam muito melhor com muitos dispositivos ao mesmo tempo."),
-                DetailItem(key: "Código do país", value: d.countryCode,
-                           explanation: "País segundo a ISO 3166-1, detectado pelo roteador. Define quais canais e potências são permitidos por lei."),
-                DetailItem(key: "Rádio ligado", value: d.powerOn ? "Sim" : "Não",
-                           explanation: "Se o rádio Wi-Fi deste Mac está ativo."),
-                DetailItem(key: "Serviço ativo", value: d.serviceActive ? "Sim" : "Não",
-                           explanation: "Se a interface Wi-Fi está habilitada nas configurações de rede do sistema."),
+            DetailCategory(title: "Configuration", icon: "gearshape", items: [
+                DetailItem(key: "Security", value: d.security,
+                           explanation: "Encryption protocol in use. WPA3 is current; WPA2 is still safe; WEP and open networks protect nothing."),
+                DetailItem(key: "PHY mode", value: d.phyMode,
+                           explanation: "Generation of the 802.11 standard in use. Wi-Fi 6 (ax) and newer handle many simultaneous devices far better."),
+                DetailItem(key: "Country code", value: d.countryCode,
+                           explanation: "Country per ISO 3166-1, detected from the router. It determines which channels and power levels are legally allowed."),
+                DetailItem(key: "Radio on", value: d.powerOn ? "Yes" : "No",
+                           explanation: "Whether this Mac's Wi-Fi radio is powered on."),
+                DetailItem(key: "Service active", value: d.serviceActive ? "Yes" : "No",
+                           explanation: "Whether the Wi-Fi interface is enabled in the system's network settings."),
             ]),
         ]
     }
@@ -187,10 +188,10 @@ enum DetailsBuilder {
     private static func qualityLabel(_ rssi: Int) -> String {
         switch rssi {
         case 0:             return "-"
-        case (-55)...:      return "Excelente"
-        case (-67)..<(-55): return "Bom"
-        case (-75)..<(-67): return "Fraco"
-        default:            return "Ruim"
+        case (-55)...:      return "Excellent"
+        case (-67)..<(-55): return "Good"
+        case (-75)..<(-67): return "Fair"
+        default:            return "Poor"
         }
     }
 }

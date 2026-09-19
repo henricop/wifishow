@@ -4,67 +4,67 @@
 
 # WifiShow
 
-**Analisador de Wi-Fi nativo para macOS.** Monitora as bandas 2.4 / 5 / 6 GHz em tempo real.
+**Native Wi-Fi analyzer for macOS.** Monitors the 2.4 / 5 / 6 GHz bands in real time.
 
 [![macOS](https://img.shields.io/badge/macOS-14.0%2B-000000?logo=apple&logoColor=white)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-5.9%2B-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![Universal](https://img.shields.io/badge/binary-universal-0A84FF)](https://developer.apple.com/documentation/apple-silicon/building-a-universal-macos-binary)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-SwiftUI · Swift Charts · CoreWLAN · sem dependências externas · 2.5 MB
+SwiftUI · Swift Charts · CoreWLAN · no external dependencies · 2.5 MB
 
 </div>
 
 ---
 
-## O que é
+## What it is
 
-Um analisador de espectro Wi-Fi que roda no seu Mac. Mostra quais redes ocupam
-quais canais, com que largura e com que força — para você escolher o canal certo
-do roteador e encontrar o melhor lugar para posicioná-lo.
+A Wi-Fi spectrum analyzer that runs on your Mac. It shows which networks occupy
+which channels, at what width and at what strength — so you can pick the right
+router channel and find the best place to put it.
 
-Sem assinatura, sem versão Pro, sem telemetria, sem conta. **O app não acessa a
-rede em nenhum momento** — só lê o rádio Wi-Fi local.
+No subscription, no Pro tier, no telemetry, no account. **The app never touches
+the network** — it only reads the local Wi-Fi radio.
 
-## Funcionalidades
+## Features
 
-| Tela | O que faz |
+| Screen | What it does |
 |---|---|
-| **Visão geral** | Rede conectada: RSSI, ruído, SNR, canal, largura, frequência central, segurança. Contagem por banda e sinal dos últimos 2 minutos. |
-| **2.4 / 5 / 6 GHz** | Analyzer espectral da banda — cada rede desenhada na frequência e largura que realmente ocupa — mais a tabela completa. |
-| **Histórico de sinal** | RSSI e SNR da rede conectada, 1 amostra por segundo, até ~12 minutos. Para caminhar pela casa e mapear a cobertura. |
-| **Congestão de canais** | Quantas redes por canal e, em 2.4 GHz, qual dos canais 1 / 6 / 11 está mais limpo. |
-| **Teste de velocidade** | Download, upload, latência e **responsividade (RPM)** sob carga, via `networkquality`. |
-| **Detalhes do Wi-Fi** | 22 métricas da conexão atual, cada uma com explicação do que significa. |
-| **Todas as redes** | Tabela única com todas as bandas, ordenável por qualquer coluna. |
+| **Overview** | Connected network: RSSI, noise, SNR, channel, width, center frequency, security. Per-band counts and signal over the last 2 minutes. |
+| **2.4 / 5 / 6 GHz** | Spectral analyzer for the band — every network drawn at the frequency and width it actually occupies — plus the full table. |
+| **Signal history** | RSSI and SNR of the connected network, one sample per second, up to ~12 minutes. Walk around to map your coverage. |
+| **Channel congestion** | How many networks sit on each channel and, on 2.4 GHz, which of channels 1 / 6 / 11 is cleanest. |
+| **Speed test** | Download, upload, latency and **responsiveness (RPM)** under load, via `networkquality`. |
+| **Wi-Fi details** | 22 metrics of the current connection, each with an explanation of what it means. |
+| **All networks** | Single table across all bands, sortable by any column. |
 
-Varredura configurável (3 / 5 / 10 / 30 s) na barra de ferramentas. `⌘R` varre na hora.
+Scan interval is configurable in the toolbar (3 / 5 / 10 / 30 s). `⌘R` scans immediately.
 
-## Requisitos
+## Requirements
 
-**Para usar o app:**
+**To run the app:**
 
 | | |
 |---|---|
-| Sistema | macOS 14.0 (Sonoma) ou superior |
-| Hardware | Apple Silicon ou Intel — o binário é universal |
-| Permissão | **Localização** (obrigatória, explicada abaixo) |
-| Wi-Fi 6E | Opcional. A aba 6 GHz só mostra redes se o Mac e o roteador suportarem |
+| System | macOS 14.0 (Sonoma) or later |
+| Hardware | Apple Silicon or Intel — the binary is universal |
+| Permission | **Location** (required, explained below) |
+| Wi-Fi 6E | Optional. The 6 GHz tab only shows networks if both Mac and router support it |
 
-**Para compilar:**
+**To build:**
 
 | | |
 |---|---|
 | Xcode Command Line Tools | `xcode-select --install` |
-| Swift | 5.9 ou superior (`swift --version`) |
-| Xcode completo | **Não é necessário** |
-| Dependências | Nenhuma. Só frameworks do sistema |
+| Swift | 5.9 or later (`swift --version`) |
+| Full Xcode | **Not required** |
+| Dependencies | None. System frameworks only |
 
-> Testado em macOS 26.6.1 com Swift 6.2.1 e Command Line Tools 26.1.
-> O mínimo declarado é macOS 14.0 porque o app usa `@Observable` e
-> `ContentUnavailableView`, introduzidos nessa versão.
+> Tested on macOS 26.6.1 with Swift 6.2.1 and Command Line Tools 26.1.
+> The declared minimum is macOS 14.0 because the app uses `@Observable` and
+> `ContentUnavailableView`, both introduced in that release.
 
-## Instalação
+## Install
 
 ```bash
 git clone https://github.com/henricop/wifishow.git
@@ -73,178 +73,207 @@ cd wifishow
 open WifiShow.app
 ```
 
-Para deixar no Launchpad:
+To keep it in Launchpad:
 
 ```bash
 cp -R WifiShow.app /Applications/
 ```
 
-### Na primeira execução
+### First launch
 
-O app é assinado **ad-hoc** (sem certificado de desenvolvedor pago), então o
-Gatekeeper reclama na primeira abertura. Como você mesmo compilou o binário a
-partir deste código, é seguro liberar:
+The app is **ad-hoc signed** (no paid developer certificate), so Gatekeeper
+complains the first time. Since you compiled the binary yourself from this
+source, it is safe to clear the quarantine flag:
 
 ```bash
 xattr -dr com.apple.quarantine WifiShow.app
 ```
 
-Ou: clique com o botão direito no app → **Abrir** → **Abrir**.
+Or: right-click the app → **Open** → **Open**.
 
-### Por que ele pede Localização
+### Why it asks for Location
 
-Desde o **macOS 14**, o sistema trata a lista de redes Wi-Fi próximas como dado
-de localização — porque dá para inferir onde você está a partir dos BSSIDs. Sem
-a permissão, o CoreWLAN devolve `ssid` e `bssid` como `nil`, e qualquer
-analisador vira uma lista vazia.
+Since **macOS 14**, the system treats the list of nearby Wi-Fi networks as
+location data — because your position can be inferred from surrounding BSSIDs.
+Without the permission, CoreWLAN returns `ssid` and `bssid` as `nil`, and any
+analyzer becomes an empty list.
 
-Só a permissão é usada: o app **não** lê sua posição GPS, não guarda histórico
-de lugares e não tem acesso à rede (nenhuma conexão sai da máquina).
+Only the permission is used: the app does **not** read your GPS position, keeps
+no location history, and has no network access at all.
 
-## Comandos
+## Commands
 
 ```bash
-./build.sh            # compila universal (arm64 + x86_64) e assina ad-hoc
-./test.sh             # suíte: plano de canais + parsing do networkquality
-./Tools/make-icon.sh  # regenera o ícone a partir do código
+./build.sh            # builds universal (arm64 + x86_64) and signs ad-hoc
+./test.sh             # suite: channel plan + networkquality parsing
+./Tools/make-icon.sh  # regenerates the icon from source
 ```
 
-## Como funciona
+## How it works
 
-### Dois loops independentes
+### Two independent loops
 
-`Sources/Scanner.swift` roda duas tarefas separadas, por um motivo concreto:
+`Sources/Scanner.swift` runs two separate tasks, for a concrete reason:
 
-- **Varredura** (3–30 s) — `CWInterface.scanForNetworks`. É **bloqueante**
-  (2–4 s) e o macOS aplica throttle. Roda em `Task.detached` e nunca abaixo de 3 s.
-- **Telemetria** (1 s) — lê apenas a interface conectada (`rssiValue`,
-  `noiseMeasurement`). Custo desprezível, e é o que dá ao histórico
-  resolução de 1 segundo sem torrar o rádio com varreduras.
+- **Scan** (3–30 s) — `CWInterface.scanForNetworks`. It is **blocking** (2–4 s)
+  and macOS throttles it. Runs in `Task.detached`, never below 3 s.
+- **Telemetry** (1 s) — reads only the connected interface (`rssiValue`,
+  `noiseMeasurement`). Negligible cost, and it is what gives the history
+  one-second resolution without hammering the radio with scans.
 
-### Canal primário ≠ centro da portadora
+### Primary channel ≠ carrier center
 
-Esta é a parte que mais separa um analisador correto de um aproximado.
+This is what separates a correct analyzer from an approximate one.
 
-O CoreWLAN entrega o **canal primário**. Uma rede de 160 MHz não transmite
-centrada nele — ela ocupa um bloco inteiro, centrado em outro ponto:
+CoreWLAN reports the **primary channel**. A 160 MHz network is not transmitted
+centered on it — it occupies a whole block, centered somewhere else:
 
 ```
-Rede no canal 44, largura 160 MHz
+Network on channel 44, 160 MHz wide
 
-  ingênuo →  centro 5220 MHz                    ✗  30 MHz fora do lugar
-  correto →  centro 5250 MHz (canal 50)         ✓  ocupa 5170–5330 MHz
+  naive   →  center 5220 MHz                    ✗  30 MHz off
+  correct →  center 5250 MHz (channel 50)       ✓  occupies 5170–5330 MHz
 ```
 
-Como cada banda resolve isso:
+How each band resolves it:
 
-- **5 GHz** — os blocos são irregulares: a faixa UNII-3 (149–165) quebra o
-  padrão de 4 em 4 dos canais anteriores. Resolvido com tabelas canônicas de
-  40 / 80 / 160 MHz.
-- **6 GHz** — regular, resolvido por fórmula: `base = span·⌊(ch−1)/span⌋ + 1`.
-- **2.4 GHz** — a direção do canal secundário (HT40+ ou HT40−) só existe no
-  Information Element do beacon, que o CoreWLAN **não expõe**. O app centra no
-  primário — aproximação conhecida e assumida, não um descuido.
+- **5 GHz** — blocks are irregular: the UNII-3 range (149–165) breaks the
+  step-of-4 pattern of the channels below it. Solved with canonical
+  40 / 80 / 160 MHz tables.
+- **6 GHz** — regular, solved by formula: `base = span·⌊(ch−1)/span⌋ + 1`.
+- **2.4 GHz** — the secondary channel direction (HT40+ or HT40−) only exists in
+  the beacon's Information Element, which CoreWLAN **does not expose**. The app
+  centers on the primary — a known, accepted approximation, not an oversight.
 
-`./test.sh` valida 9 casos, incluindo os limites de UNII-3 e 6 GHz.
+`./test.sh` validates 12 cases, including the UNII-3 and 6 GHz edges.
 
-### Teste de velocidade sem servidor
+### Speed test without a server
 
-`Sources/SpeedTest.swift` chama o **`/usr/bin/networkquality`**, a ferramenta
-nativa do macOS. Não há infraestrutura própria: o binário da Apple negocia com
-o edge mais próximo.
+`Sources/SpeedTest.swift` calls **`/usr/bin/networkquality`**, the tool built
+into macOS. There is no infrastructure of our own: Apple's binary negotiates
+with the nearest edge.
 
-Além de banda, ele mede **responsividade em RPM** (Roundtrips Per Minute) —
-quantas idas e voltas a rede sustenta *enquanto está saturada*. É a métrica que
-explica por que uma conexão de 500 Mbps ainda trava numa chamada de vídeo.
-Abaixo de 200 RPM indica bufferbloat.
+Beyond bandwidth it measures **responsiveness in RPM** (Roundtrips Per Minute) —
+how many round trips the network sustains *while saturated*. It is the metric
+that explains why a 500 Mbps connection can still stutter on a video call.
+Below 200 RPM indicates bufferbloat.
 
-O parsing fica isolado em `SpeedResult.parse(_:)`, separado da execução do
-processo, e é testado offline contra uma saída real gravada em
+Parsing is isolated in `SpeedResult.parse(_:)`, separate from process execution,
+and is tested offline against real recorded output in
 `Tests/fixtures-networkquality.json`.
 
-### Detalhes com explicação
+### Details with explanations
 
-`Sources/Details.swift` reúne o que o CoreWLAN expõe **só da interface
-conectada** — taxa de transmissão, potência, código do país, MAC do adaptador,
-modo PHY — mais os endereços IP obtidos via `getifaddrs`.
+`Sources/Details.swift` gathers what CoreWLAN exposes **only for the connected
+interface** — transmit rate, power, country code, adapter MAC, PHY mode — plus
+IP addresses obtained via `getifaddrs`.
 
-Cada uma das 22 métricas traz uma explicação acessível em popover. A ideia é
-que alguém sem formação em redes consiga ler a tela inteira sem pesquisar fora.
+Each of the 22 metrics carries a plain-language explanation in a popover. The
+goal is that someone without a networking background can read the whole screen
+without looking anything up elsewhere.
 
-> Nota sobre `transmitPower`: a Apple documenta o valor como mW, mas em Macs
-> modernos o número reportado não corresponde a miliwatts reais (o limite legal
-> gira em torno de 100 mW). O app mostra o valor bruto e diz isso na explicação,
-> em vez de carimbar uma unidade errada.
+> Note on `transmitPower`: Apple documents the value as mW, but on modern Macs
+> the reported number does not correspond to real milliwatts (the legal limit is
+> around 100 mW). The app shows the raw value and says so in the explanation,
+> rather than stamping it with a wrong unit.
 
-### Ruído e SNR
+### Noise and SNR
 
-O CoreWLAN só preenche `noise` da interface **conectada**; para as vizinhas
-devolve `0`. O app usa o ruído medido localmente como piso para estimar o SNR
-das outras redes.
+CoreWLAN only fills `noise` for the **connected** interface; for neighbors it
+returns `0`. The app uses the locally measured noise as the floor to estimate
+SNR for the others.
 
-Ou seja: **o SNR da rede conectada é medido; o das vizinhas é estimado.**
-O código deixa isso explícito em vez de fingir precisão que não existe.
+In other words: **the connected network's SNR is measured; the neighbors' is
+estimated.** The code makes that explicit rather than faking precision it does
+not have.
 
-### Curva espectral
+### Spectral curve
 
-Cada rede é uma parábola com pico no RSSI e base na largura ocupada:
+Each network is a parabola peaking at its RSSI, with its base spanning the
+occupied width:
 
 ```
-y = piso + (rssi − piso) · (1 − d²)      d = (x − centro) / (largura/2)
+y = floor + (rssi − floor) · (1 − d²)      d = (x − center) / (width/2)
 ```
 
-## Estrutura
+## Layout
 
 ```
 Sources/
-  Model.swift       domínio: banda, plano de canais, rede, curva espectral
-  Scanner.swift     CoreWLAN + CoreLocation, os dois loops
-  Details.swift     retrato da interface conectada + métricas explicadas
-  SpeedTest.swift   networkquality: execução e parsing
-  Views.swift       gráficos (Swift Charts), tabela, telas de banda
-  ViewsDetail.swift telas de velocidade e detalhes
-  App.swift         navegação, toolbar, gate de permissão
+  Model.swift       domain: band, channel plan, network, spectral curve
+  Scanner.swift     CoreWLAN + CoreLocation, the two loops
+  Details.swift     connected-interface portrait + explained metrics
+  SpeedTest.swift   networkquality: execution and parsing
+  Views.swift       charts (Swift Charts), table, band screens
+  ViewsDetail.swift speed test and details screens
+  App.swift         navigation, toolbar, permission gate
 Tests/
   ChannelPlanTests.swift
   SpeedTestParsing.swift
   fixtures-networkquality.json
 Tools/
-  MakeIcon.swift   ícone gerado por código (CoreGraphics), sem editor gráfico
+  MakeIcon.swift    icon generated from code (CoreGraphics), no graphics editor
 Resources/
   WifiShow.icns
 build.sh  test.sh
 ```
 
-## Limitações conhecidas
+## Portability
 
-- **Assinatura ad-hoc.** Sem conta Apple Developer paga, não há notarização.
-  Para distribuir fora do GitHub seria preciso assinar e notarizar.
-- **Sem modo monitor nem captura de pacotes.** Nenhum app fora do kernel
-  consegue isso no macOS moderno. O que dá para ver é o que o CoreWLAN expõe.
-- **PHY mode das vizinhas não é exposto** no resultado do scan — só da rede
-  conectada (visível na tela de Detalhes). A coluna existe no modelo das
-  vizinhas, mas fica `-`.
-- **O teste de velocidade leva ~35 s** e satura a conexão de propósito: é
-  assim que a responsividade sob carga é medida.
-- **2.4 GHz com 40 MHz** é centrado no canal primário (ver acima).
-- **Wi-Fi 7 (802.11be)** ainda não aparece no enum `CWPHYMode` do SDK atual.
+The app is **macOS only**, and not because of the UI:
 
-## Contribuindo
+- **CoreWLAN**, which performs the scan, exists only on macOS.
+- **`/usr/bin/networkquality`** is a macOS binary.
 
-Issues e PRs são bem-vindos. Antes de abrir um PR:
+There is no iOS version and there cannot be one: Apple deliberately blocks
+Wi-Fi scanning on iOS. `NEHotspotNetwork` only reports the network you are
+already joined to, and requires an entitlement Apple rarely grants.
+
+That said, the hardest part of this project is the most portable one.
+`Sources/Model.swift` — the channel plan, the primary-to-carrier-center
+mapping, the UNII-3 blocks, the 6 GHz formula, the spectral curve — is pure
+IEEE 802.11 and physics. Not a single line of it is Apple-specific.
+
+A port would keep that core and replace only the acquisition layer:
+
+| Platform | Neighbor scan | Equivalent API |
+|---|---|---|
+| **macOS** | ✅ | CoreWLAN *(what we use)* |
+| **iOS / iPadOS** | ❌ | blocked by Apple |
+| **Linux** | ✅ | `nl80211` via `libnl`, or `iw dev wlan0 scan` |
+| **Windows** | ✅ | Native Wifi API (`wlanapi.dll`) |
+| **Android** | ⚠️ | `WifiManager.getScanResults()` — heavily throttled since Android 9 |
+
+## Known limitations
+
+- **Ad-hoc signing.** Without a paid Apple Developer account there is no
+  notarization. Distributing outside GitHub would require signing and notarizing.
+- **No monitor mode, no packet capture.** No app outside the kernel can do that
+  on modern macOS. What you can see is what CoreWLAN exposes.
+- **Neighbors' PHY mode is not exposed** in scan results — only the connected
+  network's (visible on the Details screen). The field exists in the neighbor
+  model but stays `-`.
+- **2.4 GHz at 40 MHz** is centered on the primary channel (see above).
+- **Wi-Fi 7 (802.11be)** is not yet present in the current SDK's `CWPHYMode`.
+- **The speed test takes ~35 s** and saturates the link on purpose: that is how
+  responsiveness under load is measured.
+
+## Contributing
+
+Issues and PRs are welcome. Before opening a PR:
 
 ```bash
 ./build.sh && ./test.sh
 ```
 
-Ideias já mapeadas, se quiser pegar uma:
+Ideas already mapped out, if you want to pick one up:
 
-- [ ] Ícone na barra de menu com o sinal sempre visível
-- [ ] Gráfico de cobertura por cômodo a partir do histórico
-- [ ] Exportar varredura em CSV / JSON
-- [ ] Scanner de dispositivos na rede local
-- [ ] Localização do texto (hoje só português)
+- [ ] Menu bar icon with the signal always visible
+- [ ] Export scans to CSV / JSON
+- [ ] Local network device scanner
+- [ ] Per-room coverage map built from the signal history
+- [ ] Linux acquisition layer reusing `Model.swift`
 
-## Licença
+## License
 
 [MIT](LICENSE) © 2026 Henrico Piubello
