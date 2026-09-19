@@ -1,0 +1,225 @@
+import Foundation
+import Observation
+import CoreWLAN
+import CoreLocation
+import AppKit
+
+// MARK: - Permissao de localizacao
+//
+// Desde o macOS 14 o CoreWLAN devolve ssid/bssid == nil sem autorizacao de
+// localizacao. Sem esse gate o app abre e mostra uma lista vazia sem explicar.
+
+@Observable
+@MainActor
+final class LocationGate: NSObject, CLLocationManagerDelegate {
+    private let manager = CLLocationManager()
+    var status: CLAuthorizationStatus = .notDetermined
+
+    var isAuthorized: Bool {
+        status == .authorizedAlways || status == .authorized
+    }
+
+    var message: String {
+        switch status {
+        case .notDetermined: return "Aguardando autorizacao de localizacao..."
+        case .restricted:    return "Localizacao restrita por politica do sistema."
+        case .denied:        return "Localizacao negada. Sem ela o macOS oculta SSID e BSSID."
+        default:             return "Localizacao autorizada."
+        }
+    }
+
+    override init() {
+        super.init()
+        manager.delegate = self
+        status = manager.authorizationStatus
+    }
+
+    func request() {
+        manager.requestWhenInUseAuthorization()
+    }
+
+    nonisolated func locationManagerDidChangeAuthorization(_ m: CLLocationManager) {
+        let s = m.authorizationStatus
+        Task { @MainActor in self.status = s }
+    }
+
+    func openSettings() {
+        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!
+        NSWorkspace.shared.open(url)
+    }
+}
+
+// MARK: - Amostra de historico
+
+struct SignalSample: Identifiable {
+    let id = UUID()
+    let time: Date
+    let rssi: Int
+    let snr: Int
+}
+
+// MARK: - Scanner
+
+@Observable
+@MainActor
+final class WifiScanner {
+
+    // Resultado
+    private(set) var networks: [WifiNetwork] = []
+    private(set) var connected: WifiNetwork?
+    private(set) var noiseFloor: Int = -92
+    private(set) var interfaceName: String = "-"
+    private(set) var lastScan: Date?
+    private(set) var isScanning = false
+    private(set) var errorText: String?
+    private(set) var powerOn = true
+
+    // Historico do sinal da rede conectada
+    private(set) var history: [SignalSample] = []
+    private let historyLimit = 720   // ~12 min a 1 amostra/s
+
+    // Controle
+    var interval: TimeInterval = 5
+    private var scanTask: Task<Void, Never>?
+    private var monitorTask: Task<Void, Never>?
+
+    func start() {
+        guard scanTask == nil else { return }
+
+        // Loop lento: varredura completa das redes vizinhas (bloqueante, ~2-4s).
+        scanTask = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.scanOnce()
+                let secs = await MainActor.run { self?.interval ?? 5 }
+                try? await Task.sleep(nanoseconds: UInt64(secs * 1_000_000_000))
+            }
+        }
+
+        // Loop rapido: telemetria da interface conectada, 1x/s, sem custo de scan.
+        monitorTask = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.sampleConnected()
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+        }
+    }
+
+    func stop() {
+        scanTask?.cancel();    scanTask = nil
+        monitorTask?.cancel(); monitorTask = nil
+    }
+
+    func scanNow() {
+        Task { await scanOnce() }
+    }
+
+    func clearHistory() { history.removeAll() }
+
+    // MARK: Telemetria rapida da interface conectada
+
+    private func sampleConnected() async {
+        let snapshot = await Task.detached(priority: .utility) { () -> (String, Int, Int, Bool)? in
+            guard let i = CWWiFiClient.shared().interface() else { return nil }
+            return (i.interfaceName ?? "-", i.rssiValue(), i.noiseMeasurement(), i.powerOn())
+        }.value
+
+        guard let (name, rssi, noise, power) = snapshot else { return }
+        interfaceName = name
+        powerOn = power
+        if noise != 0 { noiseFloor = noise }
+        guard power, rssi != 0 else { return }
+
+        history.append(SignalSample(time: Date(), rssi: rssi, snr: rssi - (noise != 0 ? noise : noiseFloor)))
+        if history.count > historyLimit { history.removeFirst(history.count - historyLimit) }
+    }
+
+    // MARK: Varredura completa
+
+    private func scanOnce() async {
+        guard !isScanning else { return }
+        isScanning = true
+        defer { isScanning = false }
+
+        let result = await Task.detached(priority: .userInitiated) { () -> Result<([WifiNetwork], String?), Error> in
+            guard let iface = CWWiFiClient.shared().interface() else {
+                return .failure(ScanError.noInterface)
+            }
+            let currentBSSID = iface.bssid()
+            do {
+                let found = try iface.scanForNetworks(withSSID: nil)
+                let mapped: [WifiNetwork] = found.compactMap { n in
+                    guard let ch = n.wlanChannel,
+                          let band = Band(rawValue: ch.channelBand.rawValue) else { return nil }
+                    let bssid = n.bssid ?? ""
+                    return WifiNetwork(
+                        ssid: n.ssid ?? "",
+                        bssid: bssid,
+                        rssi: n.rssiValue,
+                        noise: n.noiseMeasurement,
+                        channel: ch.channelNumber,
+                        band: band,
+                        width: ch.channelWidth,
+                        security: Describe.security(n),
+                        phyMode: "-",
+                        isConnected: !bssid.isEmpty && bssid == currentBSSID
+                    )
+                }
+                return .success((mapped, currentBSSID))
+            } catch {
+                return .failure(error)
+            }
+        }.value
+
+        switch result {
+        case .success(let (list, _)):
+            networks = list.sorted { $0.rssi > $1.rssi }
+            connected = list.first(where: { $0.isConnected })
+            errorText = list.isEmpty ? "Nenhuma rede encontrada." : nil
+            lastScan = Date()
+        case .failure(let err):
+            errorText = (err as? ScanError)?.text ?? err.localizedDescription
+        }
+    }
+
+    // MARK: Derivados
+
+    func networks(in band: Band) -> [WifiNetwork] {
+        networks.filter { $0.band == band }
+    }
+
+    func bandCounts() -> [Band: Int] {
+        Dictionary(grouping: networks, by: \.band).mapValues(\.count)
+    }
+
+    /// Ocupacao por canal: quantas redes e qual o sinal mais forte em cada canal.
+    func congestion(in band: Band) -> [(channel: Int, count: Int, bestRSSI: Int)] {
+        Dictionary(grouping: networks(in: band), by: \.channel)
+            .map { (ch, nets) in
+                (channel: ch, count: nets.count, bestRSSI: nets.map(\.rssi).max() ?? -100)
+            }
+            .sorted { $0.channel < $1.channel }
+    }
+
+    /// Canais recomendados em 2.4 GHz: apenas 1, 6 e 11 nao se sobrepoem.
+    func recommended24() -> [(channel: Int, score: Int)] {
+        [1, 6, 11].map { ch in
+            // Peso por proximidade: canais vizinhos ate +-4 interferem.
+            let score = networks(in: .ghz24).reduce(0) { acc, n in
+                let dist = abs(n.channel - ch)
+                guard dist <= 4 else { return acc }
+                let weight = max(0, 5 - dist)
+                return acc + weight * max(0, n.rssi + 100)
+            }
+            return (ch, score)
+        }.sorted { $0.score < $1.score }
+    }
+}
+
+enum ScanError: Error {
+    case noInterface
+    var text: String {
+        switch self {
+        case .noInterface: return "Nenhuma interface Wi-Fi encontrada neste Mac."
+        }
+    }
+}

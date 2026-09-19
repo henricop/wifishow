@@ -1,0 +1,26 @@
+# Build
+.build/
+WifiShow.app/
+*.o
+*.swiftmodule
+*.swiftdoc
+*.swiftsourceinfo
+*.dSYM/
+
+# Artefatos intermediarios do icone
+*.iconset/
+
+# Notas locais (nao publicadas)
+notes/
+
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# Editores
+.vscode/
+.idea/
+*.xcuserstate
+xcuserdata/
