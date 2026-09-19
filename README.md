@@ -13,6 +13,11 @@
 
 SwiftUI · Swift Charts · CoreWLAN · no external dependencies · 2.5 MB
 
+<img src="Resources/screenshots/spectrum-24ghz.png" width="900" alt="WifiShow showing the 2.4 GHz band: spectral chart of every nearby network plus the full table">
+
+<sub>2.4 GHz band — each network drawn at the frequency and width it actually occupies.<br>
+Network names anonymized for the screenshot.</sub>
+
 </div>
 
 ---
@@ -215,6 +220,7 @@ Tools/
   MakeIcon.swift    icon generated from code (CoreGraphics), no graphics editor
 Resources/
   WifiShow.icns
+  screenshots/     README captures
 build.sh  test.sh
 ```
 
