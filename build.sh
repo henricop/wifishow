@@ -7,7 +7,9 @@ APP="WifiShow.app"
 ID="com.henrico.wifishow"
 VERSION="1.0.0"
 MIN_MACOS="14.0"
-SRC=(Sources/Model.swift Sources/Scanner.swift Sources/Views.swift Sources/App.swift)
+SRC=(Sources/Model.swift Sources/Scanner.swift Sources/Details.swift
+     Sources/SpeedTest.swift Sources/Views.swift Sources/ViewsDetail.swift
+     Sources/App.swift)
 FRAMEWORKS=(-framework SwiftUI -framework AppKit -framework Charts
             -framework CoreWLAN -framework CoreLocation)
 

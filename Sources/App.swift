@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum Screen: String, CaseIterable, Identifiable, Hashable {
-    case overview, ghz24, ghz5, ghz6, history, congestion, all
+    case overview, ghz24, ghz5, ghz6, history, congestion, speed, details, all
     var id: String { rawValue }
 
     var title: String {
@@ -12,6 +12,8 @@ enum Screen: String, CaseIterable, Identifiable, Hashable {
         case .ghz6:       return "6 GHz"
         case .history:    return "Historico de sinal"
         case .congestion: return "Congestao de canais"
+        case .speed:      return "Teste de velocidade"
+        case .details:    return "Detalhes do Wi-Fi"
         case .all:        return "Todas as redes"
         }
     }
@@ -24,6 +26,8 @@ enum Screen: String, CaseIterable, Identifiable, Hashable {
         case .ghz6:       return "antenna.radiowaves.left.and.right"
         case .history:    return "waveform.path.ecg"
         case .congestion: return "chart.bar.xaxis"
+        case .speed:      return "speedometer"
+        case .details:    return "doc.text.magnifyingglass"
         case .all:        return "list.bullet"
         }
     }
@@ -32,6 +36,7 @@ enum Screen: String, CaseIterable, Identifiable, Hashable {
 struct RootView: View {
     @State private var scanner = WifiScanner()
     @State private var gate = LocationGate()
+    @State private var speedTest = SpeedTestRunner()
     @State private var screen: Screen = .overview
 
     var body: some View {
@@ -46,8 +51,10 @@ struct RootView: View {
                 Section("Monitorar") {
                     row(.history)
                     row(.congestion)
+                    row(.speed)
                 }
                 Section("Dados") {
+                    row(.details)
                     row(.all, badge: scanner.networks.count)
                 }
             }
@@ -64,6 +71,8 @@ struct RootView: View {
                     case .ghz6:       BandScreen(band: .ghz6,  scanner: scanner)
                     case .history:    HistoryScreen(scanner: scanner)
                     case .congestion: CongestionScreen(scanner: scanner)
+                    case .speed:      SpeedScreen(runner: speedTest)
+                    case .details:    WifiDetailsScreen()
                     case .all:        NetworkTable(networks: scanner.networks,
                                                    noiseFloor: scanner.noiseFloor)
                     }

@@ -203,6 +203,31 @@ enum Describe {
         return "Desconhecida"
     }
 
+    /// Seguranca da interface conectada (CWInterface.security()), que usa o
+    /// mesmo enum das redes escaneadas mas e consultado diretamente.
+    static func interfaceSecurity(_ s: CWSecurity) -> String {
+        switch s {
+        case .none:               return "Aberta"
+        case .WEP:                return "WEP"
+        case .wpaPersonal:        return "WPA Personal"
+        case .wpaPersonalMixed:   return "WPA/WPA2 Personal"
+        case .wpa2Personal:       return "WPA2 Personal"
+        case .wpa3Personal:       return "WPA3 Personal"
+        case .wpa3Transition:     return "WPA2/WPA3 Transition"
+        case .wpa3Enterprise:     return "WPA3 Enterprise"
+        case .wpaEnterprise:      return "WPA Enterprise"
+        case .wpaEnterpriseMixed: return "WPA/WPA2 Enterprise"
+        case .wpa2Enterprise:     return "WPA2 Enterprise"
+        case .personal:           return "Personal"
+        case .enterprise:         return "Enterprise"
+        case .dynamicWEP:         return "WEP dinamico"
+        case .OWE:                return "OWE"
+        case .oweTransition:      return "OWE Transition"
+        case .unknown:            return "Desconhecida"
+        @unknown default:         return "Desconhecida"
+        }
+    }
+
     static func phy(_ mode: CWPHYMode) -> String {
         switch mode {
         case .mode11a:  return "Wi-Fi 1 (a)"
