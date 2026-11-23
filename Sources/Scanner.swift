@@ -162,7 +162,11 @@ final class WifiScanner {
                         width: ch.channelWidth,
                         security: Describe.security(n),
                         phyMode: "-",
-                        isConnected: !bssid.isEmpty && bssid == currentBSSID
+                        isConnected: !bssid.isEmpty && bssid == currentBSSID,
+                        // Beacon IEs. This is how a 320 MHz BSS tells us 320-1
+                        // from 320-2; CWChannelWidth cannot. Nil without location
+                        // permission, same gate as SSID.
+                        informationElements: n.informationElementData
                     )
                 }
                 return .success((mapped, currentBSSID))
