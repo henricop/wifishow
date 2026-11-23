@@ -27,18 +27,35 @@ struct InterfaceDetails {
     var serviceActive   = false
     var ipv4            = "-"
     var ipv6            = "-"
+    /// Set when a scan of this BSSID learned a width the interface enum cannot
+    /// report (320 MHz, from the EHT Operation element).
+    var scannedCarrier: ResolvedCarrier?
 
     var snr: Int { noise != 0 ? rssi - noise : 0 }
 
-    var centerMHz: Double? {
-        guard let b = band, channel > 0 else { return nil }
-        return ChannelPlan.carrierCenter(channel: channel, band: b, width: width)
+    var carrier: ResolvedCarrier {
+        if let scannedCarrier { return scannedCarrier }
+        guard let b = band, channel > 0 else { return .unknown }
+        return ChannelPlan.resolve(channel: channel, band: b, width: width,
+                                   informationElements: nil)
     }
 
-    var occupiedRange: String {
-        guard let c = centerMHz else { return "-" }
-        let half = ChannelPlan.widthMHz(width) / 2
-        return "\(Int(c - half)) – \(Int(c + half)) MHz"
+    /// Prefer the scan's placement when it is a 320 MHz network. The interface's
+    /// own `CWChannel` cannot name 320 MHz or which of 320-1 / 320-2 is in use;
+    /// the beacon captured during the scan can.
+    func applying(scanned: WifiNetwork?) -> InterfaceDetails {
+        guard let scanned,
+              let interfaceBand = band,
+              channel > 0,
+              scanned.channel == channel,
+              scanned.band.rawValue == interfaceBand.rawValue,
+              scanned.carrier.widthMHz == 320,
+              !bssid.isEmpty, !scanned.bssid.isEmpty,
+              scanned.bssid.lowercased() == bssid.lowercased()
+        else { return self }
+        var copy = self
+        copy.scannedCarrier = scanned.carrier
+        return copy
     }
 
     static func capture() -> InterfaceDetails {
@@ -157,18 +174,7 @@ enum DetailsBuilder {
                            explanation: "Raw power value reported by the driver. Apple documents it as mW, but on modern Macs the number does not match real milliwatts — the legal limit is around 100 mW. Use it to compare relative changes, not as an absolute measurement."),
             ]),
 
-            DetailCategory(title: "Channel and frequency", icon: "waveform", items: [
-                DetailItem(key: "Channel", value: d.channel > 0 ? "\(d.channel)" : "-",
-                           explanation: "Primary channel advertised by the router. On wide channels the carrier occupies a larger block, centered somewhere else."),
-                DetailItem(key: "Band", value: d.band?.label ?? "-",
-                           explanation: "2.4 GHz reaches farther and passes through walls, but it is crowded. 5 GHz is faster and cleaner with shorter range. 6 GHz is the cleanest and the shortest."),
-                DetailItem(key: "Channel width", value: Describe.width(d.width),
-                           explanation: "How much spectrum the network occupies. More width means more speed, but a higher chance of colliding with neighbors."),
-                DetailItem(key: "Center frequency", value: d.centerMHz.map { "\(Int($0)) MHz" } ?? "-",
-                           explanation: "Real center of the carrier, already accounting for width — it is not the primary channel's frequency when the channel is wide."),
-                DetailItem(key: "Occupied range", value: d.occupiedRange,
-                           explanation: "Frequency span this network actually occupies. Networks whose spans overlap interfere with each other."),
-            ]),
+            DetailCategory(title: "Channel and frequency", icon: "waveform", items: channelItems(d)),
 
             DetailCategory(title: "Configuration", icon: "gearshape", items: [
                 DetailItem(key: "Security", value: d.security,
@@ -183,6 +189,30 @@ enum DetailsBuilder {
                            explanation: "Whether the Wi-Fi interface is enabled in the system's network settings."),
             ]),
         ]
+    }
+
+    private static func channelItems(_ d: InterfaceDetails) -> [DetailItem] {
+        let carrier = d.carrier
+        var items = [
+            DetailItem(key: "Channel", value: d.channel > 0 ? "\(d.channel)" : "-",
+                       explanation: "Primary channel advertised by the router. On wide channels the carrier occupies a larger block, centered somewhere else."),
+            DetailItem(key: "Band", value: d.band?.label ?? "-",
+                       explanation: "2.4 GHz reaches farther and passes through walls, but it is crowded. 5 GHz is faster and cleaner with shorter range. 6 GHz is the cleanest and the shortest."),
+            DetailItem(key: "Channel width", value: carrier.widthText,
+                       explanation: "How much spectrum the network occupies. More width means more speed, but a higher chance of colliding with neighbors. Wi-Fi 7 can use 320 MHz. macOS does not report that width on CWChannel (the enum stops at 160); when the beacon includes an EHT Operation element, that is what this value follows."),
+            DetailItem(key: "Center frequency", value: carrier.centerText,
+                       explanation: "Real center of the carrier, already accounting for width — it is not the primary channel's frequency when the channel is wide. On 6 GHz, 320 MHz has two overlapping plans (320-1 and 320-2). When the beacon names the center, this is that frequency. When it does not, and the primary channel sits in both plans, the value is marked ambiguous and both blocks are drawn on the chart."),
+            DetailItem(key: "Occupied range", value: carrier.rangeText,
+                       explanation: "Frequency span this network actually occupies. Networks whose spans overlap interfere with each other. An ambiguous 320 MHz network lists both candidate spans."),
+        ]
+        if carrier.widthMHz == 320 {
+            items.append(DetailItem(
+                key: "320 MHz block",
+                value: carrier.blockText,
+                explanation: "Which 320 MHz channelisation the network uses. 320-1 is centered on channels 31, 95 or 159. 320-2 is centered on 63, 127 or 191. The two plans overlap, so the primary channel alone cannot tell them apart. The beacon's EHT Operation element (CCFS1) names the center. Ambiguous means that element was missing or did not name a center, and the primary channel belongs to both plans."
+            ))
+        }
+        return items
     }
 
     private static func qualityLabel(_ rssi: Int) -> String {

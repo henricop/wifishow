@@ -27,10 +27,11 @@ extension WifiNetwork {
 
 struct CurvePoint: Identifiable {
     let id: String
-    let netID: String
-    let label: String
+    let series: String
     let mhz: Double
     let rssi: Double
+    let color: Color
+    let candidate: Bool
 }
 
 // MARK: - Analyzer chart
@@ -41,15 +42,16 @@ struct AnalyzerChart: View {
 
     private var points: [CurvePoint] {
         networks.flatMap { n in
-            n.curve().enumerated().map { i, p in
-                CurvePoint(id: "\(n.id)-\(i)", netID: n.id,
-                           label: n.displaySSID, mhz: p.mhz, rssi: p.rssi)
+            n.curves().enumerated().flatMap { spanIndex, entry in
+                entry.points.enumerated().map { i, p in
+                    CurvePoint(id: "\(n.id)-\(spanIndex)-\(i)",
+                               series: "\(n.id)#\(spanIndex)",
+                               mhz: p.mhz, rssi: p.rssi,
+                               color: n.color,
+                               candidate: entry.span.candidate)
+                }
             }
         }
-    }
-
-    private var colorScale: [String: Color] {
-        Dictionary(networks.map { ($0.id, $0.color) }, uniquingKeysWith: { a, _ in a })
     }
 
     var body: some View {
@@ -59,23 +61,22 @@ struct AnalyzerChart: View {
                     x: .value("Frequency", p.mhz),
                     yStart: .value("Floor", -100),
                     yEnd: .value("Signal", p.rssi),
-                    series: .value("Network", p.netID)
+                    series: .value("Network", p.series)
                 )
-                .foregroundStyle(by: .value("Network", p.netID))
-                .opacity(0.16)
+                .foregroundStyle(p.color.opacity(p.candidate ? 0.08 : 0.16))
                 .interpolationMethod(.catmullRom)
 
                 LineMark(
                     x: .value("Frequency", p.mhz),
                     y: .value("Signal", p.rssi),
-                    series: .value("Network", p.netID)
+                    series: .value("Network", p.series)
                 )
-                .foregroundStyle(by: .value("Network", p.netID))
-                .lineStyle(StrokeStyle(lineWidth: 2))
+                .foregroundStyle(p.color)
+                .lineStyle(StrokeStyle(lineWidth: p.candidate ? 1.5 : 2,
+                                        dash: p.candidate ? [5, 3] : []))
                 .interpolationMethod(.catmullRom)
             }
         }
-        .chartForegroundStyleScale(range: networks.map(\.color))
         .chartLegend(.hidden)
         .chartYScale(domain: -100...(-10))
         .chartXScale(domain: band.range)
@@ -106,11 +107,12 @@ struct AnalyzerChart: View {
             // Label for each network at the peak of its curve.
             GeometryReader { geo in
                 ForEach(networks) { n in
-                    let xFrac = (n.centerMHz - band.range.lowerBound)
+                    let anchor = n.carrier.labelMHz ?? n.centerMHz
+                    let xFrac = (anchor - band.range.lowerBound)
                         / (band.range.upperBound - band.range.lowerBound)
                     let yFrac = 1 - (Double(max(n.rssi, -100)) + 100) / 90
-                    if xFrac >= 0, xFrac <= 1 {
-                        Text(n.displaySSID)
+                    if xFrac >= 0, xFrac <= 1, !n.carrier.spans.isEmpty {
+                        Text(n.chartLabel)
                             .font(.caption2.weight(n.isConnected ? .bold : .regular))
                             .foregroundStyle(n.color)
                             .fixedSize()
@@ -158,9 +160,9 @@ struct NetworkTable: View {
             }
             TableColumn("Quality") { n in Text(n.qualityLabel) }
             TableColumn("Channel") { n in Text("\(n.channel)").monospacedDigit() }
-            TableColumn("Width") { n in Text(Describe.width(n.width)) }
+            TableColumn("Width") { n in Text(n.carrier.widthText) }
             TableColumn("Band") { n in Text(n.band.label) }
-            TableColumn("Center") { n in Text("\(Int(n.centerMHz)) MHz").monospacedDigit() }
+            TableColumn("Center") { n in Text(n.carrier.centerText).monospacedDigit() }
             TableColumn("Security") { n in Text(n.security) }
             TableColumn("BSSID") { n in Text(n.bssid).font(.caption).monospaced() }
         }
@@ -221,6 +223,14 @@ struct BandScreen: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 6)
+
+                if nets.contains(where: { $0.carrier.showsCandidates }) {
+                    Text("Dashed curves are both candidate 320 MHz blocks (320-1 and 320-2). The beacon did not say which one this network uses.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 6)
+                }
 
                 Divider()
                 NetworkTable(networks: nets, noiseFloor: scanner.noiseFloor)
@@ -377,8 +387,8 @@ struct OverviewScreen: View {
                                 Stat("SNR", "\(c.snr(noiseFloor: scanner.noiseFloor)) dB")
                                 Stat("Channel", "\(c.channel)")
                                 Stat("Band", c.band.label)
-                                Stat("Width", Describe.width(c.width))
-                                Stat("Center", "\(Int(c.centerMHz)) MHz")
+                                Stat("Width", c.carrier.widthText)
+                                Stat("Center", c.carrier.centerText)
                                 Stat("Security", c.security)
                             }
                             Text("BSSID \(c.bssid)   ·   interface \(scanner.interfaceName)")

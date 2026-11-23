@@ -36,7 +36,7 @@ the network** — it only reads the local Wi-Fi radio.
 | Screen | What it does |
 |---|---|
 | **Overview** | Connected network: RSSI, noise, SNR, channel, width, center frequency, security. Per-band counts and signal over the last 2 minutes. |
-| **2.4 / 5 / 6 GHz** | Spectral analyzer for the band — every network drawn at the frequency and width it actually occupies — plus the full table. |
+| **2.4 / 5 / 6 GHz** | Spectral analyzer for the band — every network drawn at the frequency and width it actually occupies, including a Wi-Fi 7 320 MHz block when the beacon identifies it — plus the full table. |
 | **Signal history** | RSSI and SNR of the connected network, one sample per second, up to ~12 minutes. Walk around to map your coverage. |
 | **Channel congestion** | How many networks sit on each channel and, on 2.4 GHz, which of channels 1 / 6 / 11 is cleanest. |
 | **Speed test** | Download, upload, latency and **responsiveness (RPM)** under load, via `networkquality`. |
@@ -145,12 +145,59 @@ How each band resolves it:
 - **5 GHz** — blocks are irregular: the UNII-3 range (149–165) breaks the
   step-of-4 pattern of the channels below it. Solved with canonical
   40 / 80 / 160 MHz tables.
-- **6 GHz** — regular, solved by formula: `base = span·⌊(ch−1)/span⌋ + 1`.
+- **6 GHz, up to 160 MHz** — regular, solved by formula:
+  `base = span·⌊(ch−1)/span⌋ + 1`.
+- **6 GHz, 320 MHz (Wi-Fi 7)** — two overlapping channelisations, 320-1 and
+  320-2. The primary channel is not enough: channel 37 sits in both the
+  320-1 block centered on channel 31 (6105 MHz) and the 320-2 block centered
+  on channel 63 (6265 MHz). See below.
 - **2.4 GHz** — the secondary channel direction (HT40+ or HT40−) only exists in
   the beacon's Information Element, which CoreWLAN **does not expose**. The app
   centers on the primary — a known, accepted approximation, not an oversight.
 
-`./test.sh` validates 12 cases, including the UNII-3 and 6 GHz edges.
+`./test.sh` validates those placements plus the 320-1, 320-2, and ambiguous
+cases, including the UNII-3 and 6 GHz edges.
+
+### What CoreWLAN exposes for 320 MHz
+
+`CWChannelWidth` still has five values: unknown, 20, 40, 80, and 160 MHz
+(raw values 0 through 4). Apple's documentation lists no 320 MHz case. On
+macOS 26.5.1 the enum still tops out at 160. The Xcode 26.4 SDK added
+`kCWPHYMode11be` (raw value 7) and did not add a width.
+
+`CWNetwork.informationElementData` is the beacon or probe-response information
+element chain (tag, length, value — no 802.11 header, no fixed fields). It has
+been on `CWNetwork` since OS X 10.7. Without location permission it comes back
+nil, the same gate as SSID and BSSID. With permission, a Wi-Fi 7 AP includes
+the **EHT Operation** element (element ID 255, extension 106).
+
+That element is the source this app trusts for 320 MHz:
+
+| Field | Meaning for a 320 MHz BSS |
+|---|---|
+| Channel width (low 3 bits of the control octet) | `4` = 320 MHz. 0–3 are 20/40/80/160. |
+| CCFS0 | Center of the primary 160 MHz half. |
+| CCFS1 | Center of the 320 MHz block. This is what picks the plan. |
+
+The six standard centers are:
+
+| Plan | Center channel | Center frequency | Primary channels |
+|---|---|---|---|
+| 320-1 | 31, 95, 159 | 6105, 6425, 6745 MHz | 1–61, 65–125, 129–189 |
+| 320-2 | 63, 127, 191 | 6265, 6585, 6905 MHz | 33–93, 97–157, 161–221 |
+
+CCFS1 is used when it names one of those centers and the primary channel
+actually falls inside it. CCFS0 is the fallback when an AP put the 320 MHz
+center there instead. If neither field names a usable center, a primary that
+belongs to only one plan (channel 1 is only 320-1, channel 193 is only 320-2)
+still selects that plan. A primary that belongs to both, with no usable
+center, is **ambiguous**: the width is shown as 320 MHz, the center is labeled
+`ambiguous`, and the chart draws both blocks with a dashed outline. It does
+not guess 320-1, and it does not fall back to 20 MHz.
+
+The connected-interface screen reads `CWChannel` directly, which still cannot
+say 320. When the scan of that same BSSID parsed an EHT Operation element, the
+details screen uses that result.
 
 ### Speed test without a server
 
@@ -173,9 +220,10 @@ and is tested offline against real recorded output in
 interface** — transmit rate, power, country code, adapter MAC, PHY mode — plus
 IP addresses obtained via `getifaddrs`.
 
-Each of the 22 metrics carries a plain-language explanation in a popover. The
-goal is that someone without a networking background can read the whole screen
-without looking anything up elsewhere.
+Each metric carries a plain-language explanation in a popover. The goal is
+that someone without a networking background can read the whole screen without
+looking anything up elsewhere. A 320 MHz connection adds one row, the 320 MHz
+block (320-1, 320-2, or ambiguous).
 
 > Note on `transmitPower`: Apple documents the value as mW, but on modern Macs
 > the reported number does not correspond to real milliwatts (the legal limit is
@@ -237,8 +285,9 @@ already joined to, and requires an entitlement Apple rarely grants.
 
 That said, the hardest part of this project is the most portable one.
 `Sources/Model.swift` — the channel plan, the primary-to-carrier-center
-mapping, the UNII-3 blocks, the 6 GHz formula, the spectral curve — is pure
-IEEE 802.11 and physics. Not a single line of it is Apple-specific.
+mapping, the UNII-3 blocks, the 6 GHz formula, the 320 MHz plans, the spectral
+curve — is pure IEEE 802.11 and physics. Not a single line of it is
+Apple-specific.
 
 A port would keep that core and replace only the acquisition layer:
 
@@ -260,7 +309,17 @@ A port would keep that core and replace only the acquisition layer:
   network's (visible on the Details screen). The field exists in the neighbor
   model but stays `-`.
 - **2.4 GHz at 40 MHz** is centered on the primary channel (see above).
-- **Wi-Fi 7 (802.11be)** is not yet present in the current SDK's `CWPHYMode`.
+- **320 MHz without an EHT Operation element.** If the beacon does not name a
+  center and the primary channel is in both plans, both blocks are drawn and
+  the center is labeled ambiguous. If CoreWLAN reports 160 MHz (or less) and
+  the element is missing entirely — it is nil without location permission —
+  the app cannot know the BSS is 320 MHz, and it shows the width CoreWLAN
+  reported. `CWChannelWidth` has no 320 MHz value to read instead.
+- **Puncturing.** A 320 MHz BSS may disable individual 20 MHz subchannels. The
+  chart draws the full block; it does not punch those holes.
+- **Wi-Fi 7 PHY mode on the connected interface.** `kCWPHYMode11be` (raw value
+  7) arrived in the Xcode 26.4 SDK. The app recognizes that raw value, so it
+  still builds where the header stops at 802.11ax.
 - **The speed test takes ~35 s** and saturates the link on purpose: that is how
   responsiveness under load is measured.
 

@@ -235,6 +235,7 @@ struct InfoRow: View {
 // MARK: - Wi-Fi details
 
 struct WifiDetailsScreen: View {
+    let scanner: WifiScanner
     @State private var details = InterfaceDetails.capture()
     @State private var refresher: Task<Void, Never>?
 
@@ -267,9 +268,13 @@ struct WifiDetailsScreen: View {
         .task {
             refresher = Task {
                 while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
                     let fresh = await Task.detached { InterfaceDetails.capture() }.value
-                    await MainActor.run { details = fresh }
+                    if Task.isCancelled { return }
+                    let matched = scanner.networks.first {
+                        !$0.bssid.isEmpty && $0.bssid.lowercased() == fresh.bssid.lowercased()
+                    }
+                    details = fresh.applying(scanned: matched)
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
                 }
             }
         }

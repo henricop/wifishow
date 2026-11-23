@@ -72,7 +72,7 @@ struct RootView: View {
                     case .history:    HistoryScreen(scanner: scanner)
                     case .congestion: CongestionScreen(scanner: scanner)
                     case .speed:      SpeedScreen(runner: speedTest)
-                    case .details:    WifiDetailsScreen()
+                    case .details:    WifiDetailsScreen(scanner: scanner)
                     case .all:        NetworkTable(networks: scanner.networks,
                                                    noiseFloor: scanner.noiseFloor)
                     }
